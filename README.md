@@ -1,13 +1,15 @@
 PHASE 0: Project Initialization
 
 0.1 Repository & Tooling
-	•	Initialize a monorepo (or clearly separated frontend/backend if preferred)
 	•	Set up:
 	•	Next.js (App Router)
 	•	Elysia backend
 	•	TypeScript everywhere
 	•	Configure ESLint, Prettier
-	•	Set up environment variable handling (.env.example)
+	•	Set up environment variable handling (.env.example) with required vars list
+	•	Define local/dev/prod config split and secrets handling
+	•	Add commit hooks (lint-staged)
+	•	Testing scaffolding (unit/integration/e2e placeholders)
 
 Goal: Clean, reproducible dev environment.
 
@@ -19,11 +21,14 @@ PHASE 1: Database & Core Models
 	•	Set up PostgreSQL connection
 	•	Integrate Drizzle ORM
 	•	Configure Drizzle Kit for migrations
+	•	Add docker-compose for local Postgres
+	•	Add seed scripts and baseline seed data
+	•	Define migration rollback policy
 
 1.2 Core Tables (Minimal Schema)
 
 Create tables for:
-	•	Users
+	•	Better Auth tables (users, accounts, sessions, verification tokens, authenticators if using passkeys)
 	•	UserProgress
 	•	Challenges
 	•	ChallengeRuns
@@ -31,8 +36,9 @@ Create tables for:
 	•	SkillUnlocks
 	•	Currencies (Bytes, Focus, Commits)
 	•	Purchases (paid unlocks)
+	•	AdminAuditLogs
 
-Goal: Persist progression, skills, economy.
+Goal: Persist progression, skills, economy, and auth state.
 
 ⸻
 
@@ -45,20 +51,40 @@ PHASE 2: Authentication & User Roles
 	•	Login
 	•	Logout
 	•	Session validation
+	•	Session storage and cookie policy
+	•	Password policy and email verification
+	•	CSRF protection for state-changing routes
 
 2.2 Roles
 	•	Implement basic role system:
 	•	player
 	•	admin
 	•	Restrict admin routes
+	•	Audit admin actions
 
 Goal: Secure access and future admin tooling.
 
 ⸻
 
-PHASE 3: Challenge Definition System
+PHASE 3: API Contract & Type Sharing
 
-3.1 Challenge Format
+3.1 API Contract
+	•	Define Elysia routes with request/response schemas
+	•	Versioning strategy
+	•	Standardize error shapes
+	•	Runtime validation at the boundary
+
+3.2 Type Sharing
+	•	Shared types package for frontend/backend
+	•	Export Drizzle schema types where needed
+
+Goal: Stable contracts and safe type sharing.
+
+⸻
+
+PHASE 4: Challenge Definition System
+
+4.1 Challenge Format
 
 Define a JSON-based challenge schema including:
 	•	Language
@@ -69,7 +95,7 @@ Define a JSON-based challenge schema including:
 	•	Constraints
 	•	Rewards
 
-3.2 Challenge Loader
+4.2 Challenge Loader
 	•	Load challenges from DB or filesystem
 	•	Validate challenge schema at load time
 
@@ -77,15 +103,15 @@ Goal: Data-driven challenges, no hardcoding.
 
 ⸻
 
-PHASE 4: Code Editor & Frontend Gameplay UI
+PHASE 5: Code Editor & Frontend Gameplay UI
 
-4.1 Monaco Editor Integration
+5.1 Monaco Editor Integration
 	•	Add Monaco Editor
-	•	Enable language switching
+	•	Allow language switching.
 	•	Load starter code
 	•	Capture user edits
 
-4.2 Gameplay UI
+5.2 Gameplay UI
 
 Implement:
 	•	Server Health Bar (no numeric timer)
@@ -97,15 +123,14 @@ Goal: Core gameplay loop visible and usable.
 
 ⸻
 
-PHASE 5: Server Health (Time) Engine
+PHASE 6: Server Health (Time) Engine
 
-5.1 Server Health Logic
+6.1 Server Health Logic
 	•	Implement server health as a value from 0–100
-	•	Health decreases continuously per challenge rules
-	•	Mistakes accelerate drain
-	•	Correct fixes slow drain
+	•	Health decreases continuously
+	•   Drain can be reduced by buying updrades in the skill tree	
 
-5.2 UI State Mapping
+6.2 UI State Mapping
 
 Map health to states:
 	•	Stable
@@ -115,9 +140,9 @@ Map health to states:
 Trigger:
 	•	Visual distortion
 	•	Log intensity changes
-	•	Audio hooks (optional)
+	•	Audio hooks
 
-5.3 Crash Handling
+6.3 Crash Handling
 	•	When health reaches 0:
 	•	Show SERVER CRASHED
 	•	Lock editor
@@ -127,9 +152,9 @@ Goal: Time pressure without timers.
 
 ⸻
 
-PHASE 6: Code Execution & Validation
+PHASE 7: Code Execution & Validation
 
-6.1 Sandbox Execution
+7.1 Sandbox Execution
 	•	Set up Docker-based sandbox
 	•	Support runtimes:
 	•	JS / TS
@@ -142,8 +167,9 @@ PHASE 6: Code Execution & Validation
 	•	Memory limits
 	•	No filesystem access
 	•	No network access
+	•	Harden containers (seccomp/AppArmor)
 
-6.2 Validation Engine
+7.2 Validation Engine
 	•	Execute user code against test cases
 	•	Compare outputs deterministically
 	•	Handle:
@@ -155,9 +181,9 @@ Goal: Objective, test-based correctness.
 
 ⸻
 
-PHASE 7: Skill Tree Engine
+PHASE 8: Skill Tree Engine
 
-7.1 Skill Model
+8.1 Skill Model
 
 Define skills as:
 	•	ID
@@ -165,56 +191,79 @@ Define skills as:
 	•	Prerequisites
 	•	Effects
 
-7.2 Unlock Logic
+8.2 Unlock Logic
 	•	Check prerequisites
 	•	Deduct currency
 	•	Apply effects
 
-7.3 Skill Effects System
+8.3 Skill Effects System
 
 Implement effects that modify:
 	•	Server health drain
 	•	Allowed actions (undo, hints)
 	•	Challenge constraints
 
+8.4 Skill Catalog
+
+One-time unlocks:
+	•	Extra Edit → One extra keystroke beyond limit
+	•	Fog Pierce → Reveal hidden lines briefly
+	•	Multi-Line Patch → Break “one-line fix” rule once
+	•	Precision Bonus → No undo → bonus Focus
+	•	Ghost Fix → First fix doesn’t consume edits
+	•	Crash Shield → Survive one crash and keep editor open
+	•	Hint Pulse → Reveal one hidden hint per run
+	•	Constraint Lens → Show which constraint failed
+	•	Log Silence → Mute fake logs during runs
+	•	Rollback Token → Refund one failed run’s Focus cost
+
+Upgradeable (5–10 tiers):
+	•	Efficient Fixer → +20% Bytes on clean runs (scales per tier)
+	•	Self-Healing Server → Health regenerates slowly over time
+	•	Performance Tuner → O(n²) penalties reduced
+	•	Stability Buffer → Slower health drain at low health
+	•	Error Diffuser → Fewer penalties for runtime errors
+	•	Quick Compile → Reduced compile/validation time
+	•	Focus Saver → Lower Focus cost for retries
+	•	Commit Amplifier → +% Commits on first-try solves
+	•	Edit Budget → +N edits per tier
+	•	Log Clarity → Increase signal in real logs
+
 Goal: Data-driven progression, no UI dependency.
 
 ⸻
 
-PHASE 8: Currency & Economy Engine
+PHASE 9: Currency & Economy Engine
 
-8.1 Currency Tracking
-	•	Track:
-	•	Bytes
-	•	Focus
-	•	Commits
+9.1 Currency Tracking
+	•	Track: Bytes, Focus, Commits
 	•	Persist per user
 
-8.2 Reward Logic
+9.2 Reward Logic
 	•	Award currency based on:
 	•	Bug tier
 	•	Performance
 	•	Active modifiers
 
-8.3 Spend Logic
+9.3 Spend Logic
 	•	Bytes → per-run boosts
-	•	Focus → time control
-	•	Commits → permanent unlocks
+	•	Focus → time control (in skill tree)
+	•	Commits → permanent unlocks (in skill tree)
 
 Goal: Balanced, abuse-resistant economy.
 
 ⸻
 
-PHASE 9: Difficulty & Modifiers
+PHASE 10: Difficulty & Modifiers
 
-9.1 Difficulty Scaling
+10.1 Difficulty Scaling
 	•	Increase:
 	•	Bug count
 	•	Health drain
 	•	Constraint severity
 	•	Scale automatically with progression
 
-9.2 Optional Modifiers
+10.2 Optional Modifiers
 	•	No syntax highlighting
 	•	Limited edits
 	•	Fog of code
@@ -226,15 +275,34 @@ Goal: Player-controlled challenge depth.
 
 ⸻
 
-PHASE 10: Admin Dashboard
+PHASE 11: Cache Storage & Performance
 
-10.1 Admin UI
+11.1 Cache Storage
+	•	Introduce Redis (or equivalent) for cache storage
+	•	Define cache keys, TTLs, and namespaces
+	•	Cache high-read entities (challenges, skill trees, user state)
+	•	Write-through or cache-aside strategy
+	•	Cache invalidation plan on writes
+	•	Client-side caching with TanStack Query for CSR
+
+11.2 Query Optimization
+	•	Add indexes for hot paths
+	•	Use read-optimized views/materialized aggregates where needed
+	•	Warm caches for popular content
+
+Goal: Minimize DB queries and latency at scale.
+
+⸻
+
+PHASE 12: Admin Dashboard
+
+12.1 Admin UI
 	•	View users
 	•	Create/edit challenges
 	•	Create/edit skills
 	•	Enable/disable content
 
-10.2 Access Control
+12.2 Access Control
 	•	Admin-only routes
 	•	Secure API access
 
@@ -242,13 +310,13 @@ Goal: Content control without redeploys.
 
 ⸻
 
-PHASE 11: Payments & Access Control
+PHASE 13: Payments & Access Control
 
-11.1 Free vs Paid Split
+13.1 Free vs Paid Split
 	•	Free demo challenges
 	•	Paid unlock grants full access
 
-11.2 Polar Integration
+13.2 Polar Integration
 	•	One-time purchase
 	•	Webhook handling:
 	•	Grant access
@@ -258,34 +326,37 @@ Goal: Clean game-style monetization.
 
 ⸻
 
-PHASE 12: Observability & Protection
+PHASE 14: Observability & Protection
 
-12.1 Logging & Errors
+14.1 Logging & Errors
 	•	Log executions
 	•	Track crashes
 	•	Capture validation failures
+	•	Audit admin actions
 
-12.2 Rate Limiting
-	•	Limit code submissions
-	•	Prevent sandbox abuse
+14.2 Rate Limiting & Abuse Prevention
+	•	Limit code submissions per user/IP
+	•	Protect sandbox endpoints
+	•	Validate requests at API boundaries
 
-12.3 Monitoring
+14.3 Monitoring & Backups
 	•	Health checks
 	•	Alerting
+	•	DB backups and retention policy
 
 Goal: Stability & safety.
 
 ⸻
 
-PHASE 13: Deployment & CI/CD
+PHASE 15: Deployment & CI/CD
 
-13.1 Deployment
+15.1 Deployment
 	•	Frontend → Vercel
-	•	Backend → DigitalOcean
 
-13.2 CI/CD
+15.2 CI/CD
 	•	Lint
 	•	Type check
+	•	Unit/integration tests
 	•	Build
 	•	Deploy
 
