@@ -9,14 +9,14 @@
 
 ## Phase 1 — Database & Core Models
 
-- [ ] Add docker-compose for local Postgres
-- [ ] Configure Drizzle ORM + Drizzle Kit
-- [ ] Create migrations workflow and rollback policy
-- [ ] Add seed script + baseline seed data
-- [ ] Define schema for Better Auth tables
-- [ ] Define core tables: UserProgress, Challenges, ChallengeRuns
-- [ ] Define skills/economy tables: Skills, SkillUnlocks, Currencies
-- [ ] Define Purchases + AdminAuditLogs
+- [x] Add docker-compose for local Postgres
+- [x] Configure Drizzle ORM + Drizzle Kit
+- [x] Create migrations workflow and rollback policy
+- [x] Add seed script + baseline seed data
+- [x] Define schema for Better Auth tables
+- [x] Define core tables: UserProgress, Challenges, ChallengeRuns
+- [x] Define skills/economy tables: Skills, SkillUnlocks, Currencies
+- [x] Define Purchases + AdminAuditLogs
 
 ## Phase 2 — Authentication & Roles
 

@@ -9,13 +9,21 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix .",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "bun run scripts/seed.ts"
   },
   "dependencies": {
+    "@types/pg": "^8.16.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
+    "pg": "^8.17.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.4.0"
@@ -25,6 +33,7 @@
     "@types/node": "^20.19.30",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "eslint-config-next": "16.1.6",
     "husky": "^9.1.7",

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: arbre-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: arbre
+      POSTGRES_PASSWORD: arbre
+      POSTGRES_DB: arbre_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
