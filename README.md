@@ -118,6 +118,11 @@ Implement:
 	•	Log panel (fake + real logs)
 	•	Editor lock on crash
 	•	Run / Submit buttons
+	•	Guest demo gameplay (logged-out)
+	•	Landing page (game overview)
+	•	Demo play page (logged-out)
+	•	Purchase page (paywall)
+	•	Auth pages (login/signup)
 
 Goal: Core gameplay loop visible and usable.
 
@@ -314,6 +319,7 @@ PHASE 13: Payments & Access Control
 
 13.1 Free vs Paid Split
 	•	Free demo challenges
+	•	Logged-out demo gameplay access
 	•	Paid unlock grants full access
 
 13.2 Polar Integration
