@@ -36,7 +36,7 @@
   --sidebar-accent-foreground: oklch(0.92 0.02 260);
   --sidebar-border: oklch(0.28 0.02 275);
   --sidebar-ring: oklch(0.72 0.12 120);
-  --font-sans: "Source Sans 3", "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: "Cinzel", "Cormorant Garamond", Georgia, serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --radius: 0.5rem;
@@ -91,7 +91,7 @@
   --sidebar-accent-foreground: oklch(0.92 0.03 260);
   --sidebar-border: oklch(0.22 0.02 275);
   --sidebar-ring: oklch(0.76 0.14 120);
-  --font-sans: "Source Sans 3", "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: "Cinzel", "Cormorant Garamond", Georgia, serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --radius: 0.5rem;
