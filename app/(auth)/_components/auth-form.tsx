@@ -18,6 +18,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSignup = mode === "signup";
   const endpoint = useMemo(
@@ -36,6 +37,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     },
     onSubmit: async ({ value }) => {
       setError(null);
+      setIsSubmitting(true);
       const payload: Record<string, unknown> = {
         email: value.email,
         password: value.password,
@@ -70,11 +72,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
       } catch (err) {
         console.error(err);
         setError("The system destabilized. Please retry, Player.");
+      } finally {
+        setIsSubmitting(false);
       }
     },
   });
 
-  const isSubmitting = form.state.isSubmitting;
+  const isFormBusy = form.state.isSubmitting || form.state.isValidating;
+  const isBusy = isSubmitting || isFormBusy;
 
   const nameValidator = isSignup
     ? ({ value }: { value: string }) =>
@@ -221,19 +226,19 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
         <button
           type="submit"
-          disabled={isSubmitting}
-          aria-busy={isSubmitting}
+          disabled={isBusy}
+          aria-busy={isBusy}
           className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
         >
           <span className="flex items-center justify-center gap-2">
-            {isSubmitting ? (
+            {isBusy ? (
               <span
                 className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground"
                 role="status"
                 aria-label="Channeling"
               />
             ) : null}
-            {isSubmitting ? "Channeling..." : submitLabel}
+            {isBusy ? "Channeling..." : submitLabel}
           </span>
         </button>
       </form>
