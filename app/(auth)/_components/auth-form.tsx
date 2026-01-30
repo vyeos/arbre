@@ -17,10 +17,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isSignup = mode === "signup";
   const endpoint = useMemo(
-    () => (isSignup ? "/api/auth/sign-up/email" : "/api/auth/sign-in/email"),
+    () => (isSignup ? "/api/auth/signup/email" : "/api/auth/login/email"),
     [isSignup],
   );
 
@@ -90,7 +91,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     if (!value) {
       return "Sigil key is required.";
     }
-    return value.length >= 8 ? undefined : "Password must be at least 8 characters.";
+    return value.length >= 10 ? undefined : "Sigil key must be at least 10 characters.";
   };
 
   return (
@@ -166,18 +167,27 @@ export default function AuthForm({ mode }: AuthFormProps) {
           {(field) => (
             <label className="block space-y-2 text-sm">
               <span className="text-foreground">Sigil Key</span>
-              <input
-                type="password"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                }}
-                placeholder={isSignup ? "Minimum 8 characters" : "Your sigil key"}
-                required
-                minLength={8}
-                className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                  }}
+                  placeholder={isSignup ? "Minimum 10 characters" : "Your sigil key"}
+                  required
+                  minLength={10}
+                  className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 pr-12 text-foreground outline-none transition focus:border-ring"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-foreground"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
               {field.state.meta.isTouched && field.state.meta.errors?.length ? (
                 <span className="text-xs text-destructive">{field.state.meta.errors[0]}</span>
               ) : null}
@@ -212,9 +222,19 @@ export default function AuthForm({ mode }: AuthFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
+          aria-busy={isSubmitting}
           className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isSubmitting ? "Channeling..." : submitLabel}
+          <span className="flex items-center justify-center gap-2">
+            {isSubmitting ? (
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground"
+                role="status"
+                aria-label="Channeling"
+              />
+            ) : null}
+            {isSubmitting ? "Channeling..." : submitLabel}
+          </span>
         </button>
       </form>
 
