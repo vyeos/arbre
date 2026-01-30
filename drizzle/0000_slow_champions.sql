@@ -1,17 +1,18 @@
 CREATE TYPE "public"."user_role" AS ENUM('player', 'admin');--> statement-breakpoint
 CREATE TABLE "accounts" (
 	"id" text PRIMARY KEY NOT NULL,
+	"account_id" text NOT NULL,
+	"provider_id" text NOT NULL,
 	"user_id" text NOT NULL,
-	"provider" text NOT NULL,
-	"provider_account_id" text NOT NULL,
 	"access_token" text,
 	"refresh_token" text,
-	"token_expires_at" timestamp with time zone,
-	"token_type" text,
-	"scope" text,
 	"id_token" text,
-	"session_state" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"access_token_expires_at" timestamp,
+	"refresh_token_expires_at" timestamp,
+	"scope" text,
+	"password" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "admin_audit_logs" (
@@ -21,7 +22,7 @@ CREATE TABLE "admin_audit_logs" (
 	"target_type" text NOT NULL,
 	"target_id" text,
 	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "authenticators" (
@@ -31,7 +32,7 @@ CREATE TABLE "authenticators" (
 	"public_key" text NOT NULL,
 	"counter" integer DEFAULT 0 NOT NULL,
 	"transports" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "challenge_runs" (
@@ -41,10 +42,10 @@ CREATE TABLE "challenge_runs" (
 	"status" text NOT NULL,
 	"score" integer DEFAULT 0 NOT NULL,
 	"edits_used" integer DEFAULT 0 NOT NULL,
-	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"ended_at" timestamp with time zone,
+	"started_at" timestamp DEFAULT now() NOT NULL,
+	"ended_at" timestamp,
 	"logs" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "challenges" (
@@ -58,8 +59,8 @@ CREATE TABLE "challenges" (
 	"constraints" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"rewards" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"server_health_drain_rate" integer DEFAULT 1 NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "currencies" (
@@ -68,7 +69,7 @@ CREATE TABLE "currencies" (
 	"bytes" integer DEFAULT 0 NOT NULL,
 	"focus" integer DEFAULT 0 NOT NULL,
 	"commits" integer DEFAULT 0 NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "purchases" (
@@ -79,14 +80,19 @@ CREATE TABLE "purchases" (
 	"status" text NOT NULL,
 	"amount" integer NOT NULL,
 	"currency" text NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "sessions" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
-	"expires_at" timestamp with time zone NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"expires_at" timestamp NOT NULL,
+	"token" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"ip_address" text,
+	"user_agent" text,
+	CONSTRAINT "sessions_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
 CREATE TABLE "skill_unlocks" (
@@ -94,8 +100,8 @@ CREATE TABLE "skill_unlocks" (
 	"user_id" text NOT NULL,
 	"skill_id" text NOT NULL,
 	"tier" integer DEFAULT 1 NOT NULL,
-	"unlocked_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"unlocked_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "skills" (
@@ -106,7 +112,7 @@ CREATE TABLE "skills" (
 	"max_tier" integer DEFAULT 1 NOT NULL,
 	"effects" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"is_passive" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "user_progress" (
@@ -114,28 +120,30 @@ CREATE TABLE "user_progress" (
 	"user_id" text NOT NULL,
 	"level" integer DEFAULT 1 NOT NULL,
 	"xp" integer DEFAULT 0 NOT NULL,
-	"last_played_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"last_played_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
 	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
 	"email" text NOT NULL,
-	"name" text,
+	"email_verified" boolean DEFAULT false NOT NULL,
 	"image" text,
 	"role" "user_role" DEFAULT 'player' NOT NULL,
-	"email_verified" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
 CREATE TABLE "verification_tokens" (
 	"id" text PRIMARY KEY NOT NULL,
 	"identifier" text NOT NULL,
-	"token" text NOT NULL,
-	"expires_at" timestamp with time zone NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"value" text NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -149,8 +157,7 @@ ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY
 ALTER TABLE "skill_unlocks" ADD CONSTRAINT "skill_unlocks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "skill_unlocks" ADD CONSTRAINT "skill_unlocks_skill_id_skills_id_fk" FOREIGN KEY ("skill_id") REFERENCES "public"."skills"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_progress" ADD CONSTRAINT "user_progress_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "accounts_provider_account_unique" ON "accounts" USING btree ("provider","provider_account_id");--> statement-breakpoint
-CREATE INDEX "accounts_user_id_idx" ON "accounts" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "accounts_userId_idx" ON "accounts" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "admin_audit_logs_admin_id_idx" ON "admin_audit_logs" USING btree ("admin_user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "authenticators_credential_unique" ON "authenticators" USING btree ("credential_id");--> statement-breakpoint
 CREATE INDEX "authenticators_user_id_idx" ON "authenticators" USING btree ("user_id");--> statement-breakpoint
@@ -161,9 +168,8 @@ CREATE INDEX "challenges_language_idx" ON "challenges" USING btree ("language");
 CREATE UNIQUE INDEX "currencies_user_unique" ON "currencies" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "purchases_provider_ref_unique" ON "purchases" USING btree ("provider_ref");--> statement-breakpoint
 CREATE INDEX "purchases_user_id_idx" ON "purchases" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "sessions_user_id_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "sessions_userId_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "skill_unlocks_user_skill_unique" ON "skill_unlocks" USING btree ("user_id","skill_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "skills_name_unique" ON "skills" USING btree ("name");--> statement-breakpoint
 CREATE UNIQUE INDEX "user_progress_user_unique" ON "user_progress" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "users_email_unique" ON "users" USING btree ("email");--> statement-breakpoint
-CREATE INDEX "verification_tokens_identifier_idx" ON "verification_tokens" USING btree ("identifier");
+CREATE INDEX "verificationTokens_identifier_idx" ON "verification_tokens" USING btree ("identifier");
