@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useForm } from "@tanstack/react-form";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -15,12 +16,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSignup = mode === "signup";
   const endpoint = useMemo(
@@ -30,48 +26,70 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   const submitLabel = isSignup ? "Create account" : "Sign in";
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      rememberMe: true,
+    },
+    onSubmit: async ({ value }) => {
+      setError(null);
+      const payload: Record<string, unknown> = {
+        email: value.email,
+        password: value.password,
+        callbackURL: callbackUrl,
+      };
 
-    const payload: Record<string, unknown> = {
-      email,
-      password,
-      callbackURL: callbackUrl,
-    };
-
-    if (isSignup) {
-      payload.name = name;
-    } else {
-      payload.rememberMe = rememberMe;
-    }
-
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = data?.message ?? data?.error ?? "Unable to continue. Try again.";
-        setError(message);
-        setIsSubmitting(false);
-        return;
+      if (isSignup) {
+        payload.name = value.name;
+      } else {
+        payload.rememberMe = value.rememberMe;
       }
 
-      router.push(callbackUrl);
-      router.refresh();
-    } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please retry.");
-      setIsSubmitting(false);
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          const message = data?.message ?? data?.error ?? "Unable to continue. Try again.";
+          setError(message);
+          return;
+        }
+
+        router.push(callbackUrl);
+        router.refresh();
+      } catch (err) {
+        console.error(err);
+        setError("Something went wrong. Please retry.");
+      }
+    },
+  });
+
+  const isSubmitting = form.state.isSubmitting;
+
+  const nameValidator = isSignup
+    ? ({ value }: { value: string }) => (value.trim().length ? undefined : "Name is required.")
+    : undefined;
+  const emailValidator = ({ value }: { value: string }) => {
+    if (!value.trim()) {
+      return "Email is required.";
     }
-  }
+    const isValid = /.+@.+\..+/.test(value);
+    return isValid ? undefined : "Enter a valid email address.";
+  };
+  const passwordValidator = ({ value }: { value: string }) => {
+    if (!value) {
+      return "Password is required.";
+    }
+    return value.length >= 8 ? undefined : "Password must be at least 8 characters.";
+  };
 
   return (
     <div className="space-y-8">
@@ -86,55 +104,101 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void form.handleSubmit();
+        }}
+        className="space-y-5"
+      >
         {isSignup ? (
-          <label className="block space-y-2 text-sm">
-            <span className="text-foreground">Name</span>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Ada Lovelace"
-              required
-              className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
-            />
-          </label>
+          <form.Field
+            name="name"
+            validators={nameValidator ? { onChange: nameValidator } : undefined}
+          >
+            {(field) => (
+              <label className="block space-y-2 text-sm">
+                <span className="text-foreground">Name</span>
+                <input
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                  }}
+                  placeholder="Ada Lovelace"
+                  required
+                  className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
+                />
+                {field.state.meta.isTouched && field.state.meta.errors?.length ? (
+                  <span className="text-xs text-destructive">{field.state.meta.errors[0]}</span>
+                ) : null}
+              </label>
+            )}
+          </form.Field>
         ) : null}
 
-        <label className="block space-y-2 text-sm">
-          <span className="text-foreground">Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@arbre.dev"
-            required
-            className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
-          />
-        </label>
+        <form.Field name="email" validators={{ onChange: emailValidator }}>
+          {(field) => (
+            <label className="block space-y-2 text-sm">
+              <span className="text-foreground">Email</span>
+              <input
+                type="email"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                }}
+                placeholder="you@arbre.dev"
+                required
+                className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
+              />
+              {field.state.meta.isTouched && field.state.meta.errors?.length ? (
+                <span className="text-xs text-destructive">{field.state.meta.errors[0]}</span>
+              ) : null}
+            </label>
+          )}
+        </form.Field>
 
-        <label className="block space-y-2 text-sm">
-          <span className="text-foreground">Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={isSignup ? "Minimum 10 characters" : "Your password"}
-            required
-            minLength={10}
-            className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
-          />
-        </label>
+        <form.Field name="password" validators={{ onChange: passwordValidator }}>
+          {(field) => (
+            <label className="block space-y-2 text-sm">
+              <span className="text-foreground">Password</span>
+              <input
+                type="password"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                }}
+                placeholder={isSignup ? "Minimum 8 characters" : "Your password"}
+                required
+                minLength={8}
+                className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
+              />
+              {field.state.meta.isTouched && field.state.meta.errors?.length ? (
+                <span className="text-xs text-destructive">{field.state.meta.errors[0]}</span>
+              ) : null}
+            </label>
+          )}
+        </form.Field>
 
         {!isSignup ? (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(event) => setRememberMe(event.target.checked)}
-              className="h-4 w-4 rounded border-border bg-background text-primary"
-            />
-            Keep me signed in
-          </label>
+          <form.Field name="rememberMe">
+            {(field) => (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.checked);
+                  }}
+                  className="h-4 w-4 rounded border-border bg-background text-primary"
+                />
+                Keep me signed in
+              </label>
+            )}
+          </form.Field>
         ) : null}
 
         {error ? (
