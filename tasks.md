@@ -88,6 +88,16 @@
 - [ ] Implement reward logic per performance/modifiers
 - [ ] Implement spend logic for boosts/unlocks
 
+## Phase 9.5 — Armory & Character Vessel Progression
+
+- [ ] Add Character Vessel creation at signup (body type, skin tone, hair style, hair color, optional eye style)
+- [ ] Define Relic slots and binding rules (one bound Relic per slot)
+- [ ] Add Gold economy path for cosmetics only (no real-money purchase)
+- [ ] Define rarity tiers, pricing curve, and Sealed unlock requirements
+- [ ] Build Armory / Relic Vault UI with Sealed Relic messaging
+- [ ] Add cosmetic catalog and Acquire / Bind flow
+- [ ] Enforce cosmetics as visual-only (no gameplay effects)
+
 ## Phase 10 — Difficulty & Modifiers
 
 - [ ] Implement difficulty scaling
