@@ -1,4 +1,5 @@
 import Link from "next/link";
+console.log(process.env.DATABASE_URL);
 
 const highlights = [
   {
@@ -30,7 +31,7 @@ const relicSlots = [
 
 export default function Page() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-card to-background text-foreground">
+    <div className="min-h-screen bg-linear-to-b from-background via-card to-background text-foreground">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-16">
         <section className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div className="space-y-6">
