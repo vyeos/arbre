@@ -20,13 +20,13 @@
 
 ## Phase 2 — Authentication & Roles
 
-- [ ] Integrate Better Auth
-- [ ] Implement signup/login/logout
-- [ ] Implement session validation + cookie policy
-- [ ] Add password policy + email verification
-- [ ] Add CSRF protection for state-changing routes
-- [ ] Add role system (player/admin) + route guards
-- [ ] Add admin action audit logging
+- [x] Integrate Better Auth
+- [x] Implement signup/login/logout
+- [x] Implement session validation + cookie policy
+- [x] Add password policy + email verification
+- [x] Add CSRF protection for state-changing routes
+- [x] Add role system (player/admin) + route guards
+- [x] Add admin action audit logging
 
 ## Phase 3 — API Contract & Type Sharing
 
