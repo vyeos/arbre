@@ -21,7 +21,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   const isSignup = mode === "signup";
   const endpoint = useMemo(
-    () => (isSignup ? "/api/auth/signup/email" : "/api/auth/login/email"),
+    () => (isSignup ? "/api/auth/sign-up/email" : "/api/auth/sign-in/email"),
     [isSignup],
   );
 
