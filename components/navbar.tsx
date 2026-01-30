@@ -1,0 +1,47 @@
+import Link from "next/link";
+
+import { getCurrentUser } from "@/lib/auth-session";
+import SignOutButton from "@/components/sign-out-button";
+
+export default async function Navbar() {
+  const user = await getCurrentUser();
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
+      <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-lg font-semibold tracking-wide text-foreground">
+            Arbre
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="hidden text-right text-xs text-muted-foreground sm:block">
+                <div className="font-semibold text-foreground">{user.name ?? "Player"}</div>
+                <div>{user.email}</div>
+              </div>
+              <SignOutButton />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="rounded-lg border border-border bg-card/70 px-3 py-2 text-xs font-semibold text-foreground transition hover:border-primary/60"
+              >
+                Enter the Gate
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+              >
+                Forge a Character Vessel
+              </Link>
+            </div>
+          )}
+        </div>
+      </nav>
+    </header>
+  );
+}
