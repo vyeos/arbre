@@ -24,7 +24,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     [isSignup],
   );
 
-  const submitLabel = isSignup ? "Create account" : "Sign in";
+  const submitLabel = isSignup ? "Forge Character Vessel" : "Enter the Gate";
 
   const form = useForm({
     defaultValues: {
@@ -58,7 +58,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
         if (!response.ok) {
           const data = await response.json().catch(() => null);
-          const message = data?.message ?? data?.error ?? "Unable to continue. Try again.";
+          const message =
+            data?.message ?? data?.error ?? "The system destabilized. Try again, Player.";
           setError(message);
           return;
         }
@@ -67,7 +68,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         router.refresh();
       } catch (err) {
         console.error(err);
-        setError("Something went wrong. Please retry.");
+        setError("The system destabilized. Please retry, Player.");
       }
     },
   });
@@ -75,18 +76,19 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const isSubmitting = form.state.isSubmitting;
 
   const nameValidator = isSignup
-    ? ({ value }: { value: string }) => (value.trim().length ? undefined : "Name is required.")
+    ? ({ value }: { value: string }) =>
+        value.trim().length ? undefined : "Player name is required."
     : undefined;
   const emailValidator = ({ value }: { value: string }) => {
     if (!value.trim()) {
-      return "Email is required.";
+      return "Codex email is required.";
     }
     const isValid = /.+@.+\..+/.test(value);
-    return isValid ? undefined : "Enter a valid email address.";
+    return isValid ? undefined : "Enter a valid codex email.";
   };
   const passwordValidator = ({ value }: { value: string }) => {
     if (!value) {
-      return "Password is required.";
+      return "Sigil key is required.";
     }
     return value.length >= 8 ? undefined : "Password must be at least 8 characters.";
   };
@@ -95,12 +97,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
     <div className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold">
-          {isSignup ? "Create your account" : "Welcome back"}
+          {isSignup ? "Forge your Character Vessel" : "Welcome back, Player"}
         </h1>
         <p className="text-sm text-muted-foreground">
           {isSignup
-            ? "Join Arbre and start your first debugging run."
-            : "Sign in to continue your progress."}
+            ? "Bind your identity and begin your first Quest."
+            : "Enter the Gate to continue your ascent."}
         </p>
       </div>
 
@@ -119,14 +121,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
           >
             {(field) => (
               <label className="block space-y-2 text-sm">
-                <span className="text-foreground">Name</span>
+                <span className="text-foreground">Player Name</span>
                 <input
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(event) => {
                     field.handleChange(event.target.value);
                   }}
-                  placeholder="Ada Lovelace"
+                  placeholder="Ada the Swift"
                   required
                   className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
                 />
@@ -141,7 +143,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         <form.Field name="email" validators={{ onChange: emailValidator }}>
           {(field) => (
             <label className="block space-y-2 text-sm">
-              <span className="text-foreground">Email</span>
+              <span className="text-foreground">Codex Email</span>
               <input
                 type="email"
                 value={field.state.value}
@@ -149,7 +151,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 onChange={(event) => {
                   field.handleChange(event.target.value);
                 }}
-                placeholder="you@arbre.dev"
+                placeholder="player@arbre.dev"
                 required
                 className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
               />
@@ -163,7 +165,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         <form.Field name="password" validators={{ onChange: passwordValidator }}>
           {(field) => (
             <label className="block space-y-2 text-sm">
-              <span className="text-foreground">Password</span>
+              <span className="text-foreground">Sigil Key</span>
               <input
                 type="password"
                 value={field.state.value}
@@ -171,7 +173,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 onChange={(event) => {
                   field.handleChange(event.target.value);
                 }}
-                placeholder={isSignup ? "Minimum 8 characters" : "Your password"}
+                placeholder={isSignup ? "Minimum 8 characters" : "Your sigil key"}
                 required
                 minLength={8}
                 className="w-full rounded-lg border border-border bg-background/70 px-4 py-2 text-foreground outline-none transition focus:border-ring"
@@ -195,7 +197,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   }}
                   className="h-4 w-4 rounded border-border bg-background text-primary"
                 />
-                Keep me signed in
+                Keep my sigil bound
               </label>
             )}
           </form.Field>
@@ -212,23 +214,23 @@ export default function AuthForm({ mode }: AuthFormProps) {
           disabled={isSubmitting}
           className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isSubmitting ? "Working..." : submitLabel}
+          {isSubmitting ? "Channeling..." : submitLabel}
         </button>
       </form>
 
       <div className="text-xs text-muted-foreground">
         {isSignup ? (
           <p>
-            Already have an account?{" "}
+            Already have a Character Vessel?{" "}
             <Link href="/login" className="text-primary hover:text-primary/80">
-              Sign in
+              Enter the Gate
             </Link>
           </p>
         ) : (
           <p>
-            New here?{" "}
+            New Player?{" "}
             <Link href="/signup" className="text-primary hover:text-primary/80">
-              Create an account
+              Forge a Character Vessel
             </Link>
           </p>
         )}
@@ -236,8 +238,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       {isSignup ? (
         <p className="text-xs text-muted-foreground">
-          Verification is required. We will email a link to confirm your address before you can sign
-          in.
+          Verification is required. We will send a sigil link to confirm your codex email before you
+          can enter the Gate.
         </p>
       ) : null}
     </div>
