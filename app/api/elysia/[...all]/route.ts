@@ -51,7 +51,7 @@ const resolveErrorMessage = (error: unknown) => {
   return "The system destabilized.";
 };
 
-const app = new Elysia({ prefix: "/api" })
+export const app = new Elysia({ prefix: "/api/elysia" })
   .onError(({ code, error, set }) => {
     const status = code === "NOT_FOUND" ? 404 : 500;
     set.status = status;
@@ -193,6 +193,12 @@ const app = new Elysia({ prefix: "/api" })
     },
   );
 
-app.listen(3001);
+export type App = typeof app;
 
-console.info("Elysia API running at http://localhost:3001/api");
+export const runtime = "nodejs";
+
+export const GET = app.handle;
+export const POST = app.handle;
+export const PATCH = app.handle;
+export const PUT = app.handle;
+export const DELETE = app.handle;
