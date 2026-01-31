@@ -89,10 +89,48 @@ const SkillEffectsSummary = t.Object({
   reward_multiplier: t.Number(),
 });
 
+const CharacterVesselSchema = t.Object({
+  bodyType: t.String(),
+  skinTone: t.String(),
+  hairStyle: t.String(),
+  hairColor: t.String(),
+  eyeStyle: NullableString,
+});
+
+const RelicSummary = t.Object({
+  id: t.String(),
+  name: t.String(),
+  description: t.String(),
+  slot: t.String(),
+  rarity: t.String(),
+  priceGold: t.Number(),
+  unlockCondition: NullableString,
+  requiresSkillId: NullableString,
+  isLimited: t.Boolean(),
+  isAvailable: t.Boolean(),
+});
+
+const RelicCatalogEntry = t.Object({
+  id: t.String(),
+  name: t.String(),
+  description: t.String(),
+  slot: t.String(),
+  rarity: t.String(),
+  priceGold: t.Number(),
+  unlockCondition: NullableString,
+  requiresSkillId: NullableString,
+  isLimited: t.Boolean(),
+  isAvailable: t.Boolean(),
+  isSealed: t.Boolean(),
+  owned: t.Boolean(),
+  bound: t.Boolean(),
+});
+
 const CurrencyWallet = t.Object({
   bytes: t.Number(),
   focus: t.Number(),
   commits: t.Number(),
+  gold: t.Number(),
 });
 
 const RewardModifiers = t.Object({
@@ -108,8 +146,19 @@ const EconomyAwardRequest = t.Object({
 });
 
 const EconomySpendRequest = t.Object({
-  currency: t.Union([t.Literal("bytes"), t.Literal("focus"), t.Literal("commits")]),
+  currency: t.Union([
+    t.Literal("bytes"),
+    t.Literal("focus"),
+    t.Literal("commits"),
+    t.Literal("gold"),
+  ]),
   amount: t.Number(),
+});
+
+const AwardedReward = t.Object({
+  bytes: t.Number(),
+  focus: t.Number(),
+  commits: t.Number(),
 });
 
 const ExecuteTestCase = t.Object({
@@ -568,6 +617,474 @@ export const app = new Elysia({ prefix: "/api/elysia" })
     },
   )
   .get(
+    "/armory/catalog",
+    async () => {
+      const user = await getCurrentUser();
+      const relicRows = await db
+        .select({
+          id: schema.relics.id,
+          name: schema.relics.name,
+          description: schema.relics.description,
+          slot: schema.relics.slot,
+          rarity: schema.relics.rarity,
+          priceGold: schema.relics.priceGold,
+          unlockCondition: schema.relics.unlockCondition,
+          requiresSkillId: schema.relics.requiresSkillId,
+          isLimited: schema.relics.isLimited,
+          isAvailable: schema.relics.isAvailable,
+        })
+        .from(schema.relics);
+
+      if (!user) {
+        return {
+          data: relicRows.map((relic) => ({
+            ...relic,
+            unlockCondition: relic.unlockCondition ?? null,
+            requiresSkillId: relic.requiresSkillId ?? null,
+            isSealed: Boolean(relic.unlockCondition || relic.isLimited),
+            owned: false,
+            bound: false,
+          })),
+          error: null,
+        };
+      }
+
+      const [unlocks, inventory, bindings] = await Promise.all([
+        db
+          .select({
+            id: schema.skillUnlocks.skillId,
+          })
+          .from(schema.skillUnlocks)
+          .where(eq(schema.skillUnlocks.userId, user.id)),
+        db
+          .select({
+            relicId: schema.relicInventory.relicId,
+          })
+          .from(schema.relicInventory)
+          .where(eq(schema.relicInventory.userId, user.id)),
+        db
+          .select({
+            relicId: schema.relicBindings.relicId,
+          })
+          .from(schema.relicBindings)
+          .where(eq(schema.relicBindings.userId, user.id)),
+      ]);
+
+      const unlockedSkills = new Set(unlocks.map((item) => item.id));
+      const ownedRelics = new Set(inventory.map((item) => item.relicId));
+      const boundRelics = new Set(bindings.map((item) => item.relicId));
+
+      return {
+        data: relicRows.map((relic) => {
+          const requiresSkill = relic.requiresSkillId
+            ? !unlockedSkills.has(relic.requiresSkillId)
+            : false;
+          const isSealed =
+            !relic.isAvailable || requiresSkill || (relic.isLimited && !!relic.unlockCondition);
+
+          return {
+            ...relic,
+            unlockCondition: relic.unlockCondition ?? null,
+            requiresSkillId: relic.requiresSkillId ?? null,
+            isSealed,
+            owned: ownedRelics.has(relic.id),
+            bound: boundRelics.has(relic.id),
+          };
+        }),
+        error: null,
+      };
+    },
+    {
+      response: {
+        200: ApiSuccess(t.Array(RelicCatalogEntry)),
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
+    "/armory/inventory",
+    async ({ set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to access the Armory.",
+          },
+        };
+      }
+
+      const [vessel] = await db
+        .select({
+          bodyType: schema.characterVessels.bodyType,
+          skinTone: schema.characterVessels.skinTone,
+          hairStyle: schema.characterVessels.hairStyle,
+          hairColor: schema.characterVessels.hairColor,
+          eyeStyle: schema.characterVessels.eyeStyle,
+        })
+        .from(schema.characterVessels)
+        .where(eq(schema.characterVessels.userId, user.id))
+        .limit(1);
+
+      const owned = await db
+        .select({
+          id: schema.relics.id,
+          name: schema.relics.name,
+          description: schema.relics.description,
+          slot: schema.relics.slot,
+          rarity: schema.relics.rarity,
+          priceGold: schema.relics.priceGold,
+          unlockCondition: schema.relics.unlockCondition,
+          requiresSkillId: schema.relics.requiresSkillId,
+          isLimited: schema.relics.isLimited,
+          isAvailable: schema.relics.isAvailable,
+        })
+        .from(schema.relicInventory)
+        .innerJoin(schema.relics, eq(schema.relicInventory.relicId, schema.relics.id))
+        .where(eq(schema.relicInventory.userId, user.id));
+
+      const bindings = await db
+        .select({
+          relicId: schema.relicBindings.relicId,
+          slot: schema.relicBindings.slot,
+        })
+        .from(schema.relicBindings)
+        .where(eq(schema.relicBindings.userId, user.id));
+
+      return {
+        data: {
+          vessel: vessel ?? null,
+          owned,
+          bindings,
+        },
+        error: null,
+      };
+    },
+    {
+      response: {
+        200: ApiSuccess(
+          t.Object({
+            vessel: t.Union([CharacterVesselSchema, t.Null()]),
+            owned: t.Array(RelicSummary),
+            bindings: t.Array(t.Object({ relicId: t.String(), slot: t.String() })),
+          }),
+        ),
+        401: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/armory/vessel",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to bind your Character Vessel.",
+          },
+        };
+      }
+
+      const [existing] = await db
+        .select({ id: schema.characterVessels.id })
+        .from(schema.characterVessels)
+        .where(eq(schema.characterVessels.userId, user.id))
+        .limit(1);
+
+      if (existing) {
+        set.status = 409;
+        return {
+          data: null,
+          error: {
+            code: "VESSEL_EXISTS",
+            message: "Character Vessel already forged.",
+          },
+        };
+      }
+
+      await db.insert(schema.characterVessels).values({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        bodyType: body.bodyType,
+        skinTone: body.skinTone,
+        hairStyle: body.hairStyle,
+        hairColor: body.hairColor,
+        eyeStyle: body.eyeStyle ?? null,
+      });
+
+      return {
+        data: body,
+        error: null,
+      };
+    },
+    {
+      body: CharacterVesselSchema,
+      response: {
+        200: ApiSuccess(CharacterVesselSchema),
+        401: ApiFailure,
+        409: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/armory/acquire",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to acquire Relics.",
+          },
+        };
+      }
+
+      const [relic] = await db
+        .select({
+          id: schema.relics.id,
+          priceGold: schema.relics.priceGold,
+          isAvailable: schema.relics.isAvailable,
+          unlockCondition: schema.relics.unlockCondition,
+          requiresSkillId: schema.relics.requiresSkillId,
+          isLimited: schema.relics.isLimited,
+        })
+        .from(schema.relics)
+        .where(eq(schema.relics.id, body.relicId))
+        .limit(1);
+
+      if (!relic) {
+        set.status = 404;
+        return {
+          data: null,
+          error: {
+            code: "NOT_FOUND",
+            message: "Relic not found in the Vault.",
+          },
+        };
+      }
+
+      if (!relic.isAvailable) {
+        set.status = 409;
+        return {
+          data: null,
+          error: {
+            code: "SEALED",
+            message: "Relic is sealed beyond reach.",
+          },
+        };
+      }
+
+      if (relic.requiresSkillId) {
+        const [skillUnlock] = await db
+          .select({ id: schema.skillUnlocks.id })
+          .from(schema.skillUnlocks)
+          .where(
+            and(
+              eq(schema.skillUnlocks.userId, user.id),
+              eq(schema.skillUnlocks.skillId, relic.requiresSkillId),
+            ),
+          )
+          .limit(1);
+
+        if (!skillUnlock) {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "SEALED",
+              message: relic.unlockCondition ?? "Relic sealed by mastery requirements.",
+            },
+          };
+        }
+      }
+
+      try {
+        const amount = relic.priceGold;
+        const result = await db.transaction(async (tx) => {
+          const [spend] = await tx
+            .update(schema.currencies)
+            .set({ gold: sql`${schema.currencies.gold} - ${amount}` })
+            .where(
+              and(
+                eq(schema.currencies.userId, user.id),
+                sql`${schema.currencies.gold} >= ${amount}`,
+              ),
+            )
+            .returning({ gold: schema.currencies.gold });
+
+          if (!spend) {
+            throw new Error("INSUFFICIENT_GOLD");
+          }
+
+          const [inventory] = await tx
+            .insert(schema.relicInventory)
+            .values({
+              id: crypto.randomUUID(),
+              userId: user.id,
+              relicId: relic.id,
+            })
+            .onConflictDoNothing({
+              target: [schema.relicInventory.userId, schema.relicInventory.relicId],
+            })
+            .returning({ relicId: schema.relicInventory.relicId });
+
+          if (!inventory) {
+            throw new Error("ALREADY_OWNED");
+          }
+
+          return { remainingGold: spend.gold };
+        });
+
+        return {
+          data: {
+            relicId: relic.id,
+            remainingGold: result.remainingGold,
+          },
+          error: null,
+        };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "LOCKED";
+
+        if (reason === "INSUFFICIENT_GOLD") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "Not enough Gold to Acquire this Relic.",
+            },
+          };
+        }
+
+        if (reason === "ALREADY_OWNED") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "Relic already acquired.",
+            },
+          };
+        }
+
+        throw error;
+      }
+    },
+    {
+      body: t.Object({ relicId: t.String() }),
+      response: {
+        200: ApiSuccess(
+          t.Object({
+            relicId: t.String(),
+            remainingGold: t.Number(),
+          }),
+        ),
+        401: ApiFailure,
+        404: ApiFailure,
+        409: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/armory/bind",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to bind Relics.",
+          },
+        };
+      }
+
+      const [owned] = await db
+        .select({
+          relicId: schema.relicInventory.relicId,
+        })
+        .from(schema.relicInventory)
+        .where(
+          and(
+            eq(schema.relicInventory.userId, user.id),
+            eq(schema.relicInventory.relicId, body.relicId),
+          ),
+        )
+        .limit(1);
+
+      if (!owned) {
+        set.status = 409;
+        return {
+          data: null,
+          error: {
+            code: "LOCKED",
+            message: "Relic not acquired. Visit the Vault to Acquire it.",
+          },
+        };
+      }
+
+      const [relic] = await db
+        .select({ slot: schema.relics.slot })
+        .from(schema.relics)
+        .where(eq(schema.relics.id, body.relicId))
+        .limit(1);
+
+      if (!relic) {
+        set.status = 404;
+        return {
+          data: null,
+          error: {
+            code: "NOT_FOUND",
+            message: "Relic not found in the Vault.",
+          },
+        };
+      }
+
+      const [binding] = await db
+        .insert(schema.relicBindings)
+        .values({
+          id: crypto.randomUUID(),
+          userId: user.id,
+          relicId: body.relicId,
+          slot: relic.slot,
+        })
+        .onConflictDoUpdate({
+          target: [schema.relicBindings.userId, schema.relicBindings.slot],
+          set: {
+            relicId: body.relicId,
+            boundAt: sql`NOW()`,
+          },
+        })
+        .returning({ relicId: schema.relicBindings.relicId, slot: schema.relicBindings.slot });
+
+      return {
+        data: binding,
+        error: null,
+      };
+    },
+    {
+      body: t.Object({ relicId: t.String() }),
+      response: {
+        200: ApiSuccess(t.Object({ relicId: t.String(), slot: t.String() })),
+        401: ApiFailure,
+        404: ApiFailure,
+        409: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
     "/economy/wallet",
     async ({ set }) => {
       const user = await getCurrentUser();
@@ -587,6 +1104,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           bytes: schema.currencies.bytes,
           focus: schema.currencies.focus,
           commits: schema.currencies.commits,
+          gold: schema.currencies.gold,
         })
         .from(schema.currencies)
         .where(eq(schema.currencies.userId, user.id))
@@ -604,16 +1122,18 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           bytes: 0,
           focus: 0,
           commits: 0,
+          gold: 0,
         })
         .onConflictDoNothing({ target: [schema.currencies.userId] })
         .returning({
           bytes: schema.currencies.bytes,
           focus: schema.currencies.focus,
           commits: schema.currencies.commits,
+          gold: schema.currencies.gold,
         });
 
       return {
-        data: created ?? { bytes: 0, focus: 0, commits: 0 },
+        data: created ?? { bytes: 0, focus: 0, commits: 0, gold: 0 },
         error: null,
       };
     },
@@ -650,6 +1170,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           bytes: reward.bytes,
           focus: reward.focus,
           commits: reward.commits,
+          gold: 0,
         })
         .onConflictDoUpdate({
           target: [schema.currencies.userId],
@@ -663,6 +1184,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           bytes: schema.currencies.bytes,
           focus: schema.currencies.focus,
           commits: schema.currencies.commits,
+          gold: schema.currencies.gold,
         });
 
       return {
@@ -681,7 +1203,8 @@ export const app = new Elysia({ prefix: "/api/elysia" })
             bytes: t.Number(),
             focus: t.Number(),
             commits: t.Number(),
-            awarded: CurrencyWallet,
+            gold: t.Number(),
+            awarded: AwardedReward,
           }),
         ),
         401: ApiFailure,
@@ -721,7 +1244,9 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           ? schema.currencies.bytes
           : body.currency === "focus"
             ? schema.currencies.focus
-            : schema.currencies.commits;
+            : body.currency === "commits"
+              ? schema.currencies.commits
+              : schema.currencies.gold;
 
       const updatedRows = await db
         .update(schema.currencies)
@@ -738,12 +1263,17 @@ export const app = new Elysia({ prefix: "/api/elysia" })
             body.currency === "commits"
               ? sql`${schema.currencies.commits} - ${amount}`
               : schema.currencies.commits,
+          gold:
+            body.currency === "gold"
+              ? sql`${schema.currencies.gold} - ${amount}`
+              : schema.currencies.gold,
         })
         .where(and(eq(schema.currencies.userId, user.id), sql`${column} >= ${amount}`))
         .returning({
           bytes: schema.currencies.bytes,
           focus: schema.currencies.focus,
           commits: schema.currencies.commits,
+          gold: schema.currencies.gold,
         });
 
       if (!updatedRows.length) {

@@ -5,6 +5,10 @@ import type {
   challengeRuns,
   skills,
   skillUnlocks,
+  characterVessels,
+  relics,
+  relicInventory,
+  relicBindings,
   users,
   accounts,
   sessions,
@@ -30,6 +34,10 @@ export type NewChallenge = InferInsertModel<typeof challenges>;
 export type ChallengeRun = InferSelectModel<typeof challengeRuns>;
 export type Skill = InferSelectModel<typeof skills>;
 export type SkillUnlock = InferSelectModel<typeof skillUnlocks>;
+export type CharacterVessel = InferSelectModel<typeof characterVessels>;
+export type Relic = InferSelectModel<typeof relics>;
+export type RelicInventoryItem = InferSelectModel<typeof relicInventory>;
+export type RelicBinding = InferSelectModel<typeof relicBindings>;
 export type UserProgress = InferSelectModel<typeof userProgress>;
 export type Currency = InferSelectModel<typeof currencies>;
 export type Purchase = InferSelectModel<typeof purchases>;

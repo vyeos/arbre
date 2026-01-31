@@ -220,12 +220,89 @@ export const currencies = pgTable(
     bytes: integer("bytes").notNull().default(0),
     focus: integer("focus").notNull().default(0),
     commits: integer("commits").notNull().default(0),
+    gold: integer("gold").notNull().default(0),
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
   },
   (table) => [uniqueIndex("currencies_user_unique").on(table.userId)],
+);
+
+export const characterVessels = pgTable(
+  "character_vessels",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bodyType: text("body_type").notNull(),
+    skinTone: text("skin_tone").notNull(),
+    hairStyle: text("hair_style").notNull(),
+    hairColor: text("hair_color").notNull(),
+    eyeStyle: text("eye_style"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [uniqueIndex("character_vessels_user_unique").on(table.userId)],
+);
+
+export const relics = pgTable(
+  "relics",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    slot: text("slot").notNull(),
+    rarity: text("rarity").notNull(),
+    priceGold: integer("price_gold").notNull().default(0),
+    unlockCondition: text("unlock_condition"),
+    requiresSkillId: text("requires_skill_id"),
+    isLimited: boolean("is_limited").notNull().default(false),
+    isAvailable: boolean("is_available").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("relics_slot_idx").on(table.slot), index("relics_rarity_idx").on(table.rarity)],
+);
+
+export const relicInventory = pgTable(
+  "relic_inventory",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    relicId: text("relic_id")
+      .notNull()
+      .references(() => relics.id, { onDelete: "cascade" }),
+    acquiredAt: timestamp("acquired_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("relic_inventory_user_relic_unique").on(table.userId, table.relicId),
+    index("relic_inventory_user_idx").on(table.userId),
+  ],
+);
+
+export const relicBindings = pgTable(
+  "relic_bindings",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    relicId: text("relic_id")
+      .notNull()
+      .references(() => relics.id, { onDelete: "cascade" }),
+    slot: text("slot").notNull(),
+    boundAt: timestamp("bound_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("relic_bindings_user_slot_unique").on(table.userId, table.slot),
+    uniqueIndex("relic_bindings_user_relic_unique").on(table.userId, table.relicId),
+  ],
 );
 
 export const purchases = pgTable(
@@ -269,6 +346,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   skillUnlocks: many(skillUnlocks),
   challengeRuns: many(challengeRuns),
+  relicInventory: many(relicInventory),
+  relicBindings: many(relicBindings),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -304,5 +383,39 @@ export const skillUnlocksRelations = relations(skillUnlocks, ({ one }) => ({
   skill: one(skills, {
     fields: [skillUnlocks.skillId],
     references: [skills.id],
+  }),
+}));
+
+export const characterVesselsRelations = relations(characterVessels, ({ one }) => ({
+  user: one(users, {
+    fields: [characterVessels.userId],
+    references: [users.id],
+  }),
+}));
+
+export const relicsRelations = relations(relics, ({ many }) => ({
+  inventory: many(relicInventory),
+  bindings: many(relicBindings),
+}));
+
+export const relicInventoryRelations = relations(relicInventory, ({ one }) => ({
+  user: one(users, {
+    fields: [relicInventory.userId],
+    references: [users.id],
+  }),
+  relic: one(relics, {
+    fields: [relicInventory.relicId],
+    references: [relics.id],
+  }),
+}));
+
+export const relicBindingsRelations = relations(relicBindings, ({ one }) => ({
+  user: one(users, {
+    fields: [relicBindings.userId],
+    references: [users.id],
+  }),
+  relic: one(relics, {
+    fields: [relicBindings.relicId],
+    references: [relics.id],
   }),
 }));

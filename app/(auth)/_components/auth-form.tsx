@@ -27,6 +27,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
   );
 
   const submitLabel = isSignup ? "Forge Character Vessel" : "Enter the Gate";
+  const defaultVessel = {
+    bodyType: "Adventurer",
+    skinTone: "Dawn",
+    hairStyle: "Wanderer",
+    hairColor: "Umber",
+    eyeStyle: "Ember",
+  };
 
   const form = useForm({
     defaultValues: {
@@ -65,6 +72,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
             data?.message ?? data?.error ?? "The system destabilized. Try again, Player.";
           setError(message);
           return;
+        }
+
+        if (isSignup) {
+          await fetch("/api/elysia/armory/vessel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(defaultVessel),
+          }).catch(() => undefined);
         }
 
         router.push(callbackUrl);
