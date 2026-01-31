@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { db } from "../db";
 import { challenges, skills } from "../db/schema";
 import { loadChallengeDefinitions } from "../lib/challenges/loader";
+import { skillCatalog } from "../lib/skills/catalog";
 
 async function main() {
   const challengeDefinitions = await loadChallengeDefinitions();
@@ -27,26 +28,17 @@ async function main() {
 
   await db
     .insert(skills)
-    .values([
-      {
-        id: randomUUID(),
-        name: "Extra Edit",
-        description: "One extra keystroke beyond limit.",
-        category: "general",
-        maxTier: 1,
-        effects: { editBonus: 1 },
-        isPassive: true,
-      },
-      {
-        id: randomUUID(),
-        name: "Efficient Fixer",
-        description: "+20% Bytes on clean runs (scales per tier).",
-        category: "general",
-        maxTier: 10,
-        effects: { bytesMultiplierPerTier: 0.2 },
-        isPassive: true,
-      },
-    ])
+    .values(
+      skillCatalog.map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        description: skill.description,
+        category: skill.branch,
+        maxTier: skill.maxTier,
+        effects: { effects: skill.effects },
+        isPassive: skill.isPassive,
+      })),
+    )
     .onConflictDoNothing();
 }
 

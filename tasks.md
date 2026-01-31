@@ -78,10 +78,10 @@
 
 ## Phase 8 — Skill Tree Engine
 
-- [ ] Define skill model + prerequisites
-- [ ] Implement unlock/spend logic
-- [ ] Implement effects system
-- [ ] Populate initial skill catalog (one-time + upgradeable)
+- [x] Define skill model + prerequisites
+- [x] Implement unlock/spend logic
+- [x] Implement effects system
+- [x] Populate initial skill catalog (one-time + upgradeable)
 
 ## Phase 9 — Currency & Economy
 
