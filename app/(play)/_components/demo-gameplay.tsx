@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import { useServerHealth, type DrainModifier } from "@/lib/server-health";
 
@@ -46,10 +46,77 @@ const logSeeds = [
   "Stability field fluctuating...",
 ];
 
+const stripJsExports = (source: string) =>
+  source.replace(/\bexport\s+(?=(function|const|let|class)\b)/g, "");
+
 type LogEntry = {
   id: number;
   message: string;
   tone: "neutral" | "success" | "danger";
+};
+
+type ExecuteTestCase = {
+  id: string;
+  input: string;
+  expectedOutput: string;
+  hidden?: boolean;
+};
+
+type ExecuteResult = {
+  status: "passed" | "failed" | "compile_error" | "runtime_error" | "timeout" | "internal_error";
+  tests: Array<{
+    id: string;
+    passed: boolean;
+    actualOutput: string | null;
+    expectedOutput: string | null;
+    durationMs: number;
+    hidden: boolean;
+  }>;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+};
+
+type ExecuteResponse = {
+  data: ExecuteResult | null;
+  error: { code: string; message: string } | null;
+};
+
+const demoQuestRunners: Record<
+  string,
+  {
+    tests: ExecuteTestCase[];
+    submitTests?: ExecuteTestCase[];
+    buildCode: (code: string) => string;
+  }
+> = {
+  "null-check": {
+    tests: [{ id: "t1", input: '{"name":"aria"}', expectedOutput: "ARIA" }],
+    submitTests: [
+      { id: "t1", input: '{"name":"aria"}', expectedOutput: "ARIA" },
+      { id: "t2", input: '{"name":"luna"}', expectedOutput: "LUNA", hidden: true },
+    ],
+    buildCode: (code: string) =>
+      `${code}\nconst fs = require("fs");\nconst input = fs.readFileSync(0, "utf8").trim();\nconst payload = input ? JSON.parse(input) : {};\nconst result = getName(payload);\nconsole.log(result);\n`,
+  },
+  "py-loop": {
+    tests: [{ id: "t1", input: "[1,2,3]", expectedOutput: "6" }],
+    submitTests: [
+      { id: "t1", input: "[1,2,3]", expectedOutput: "6" },
+      { id: "t2", input: "[10,5]", expectedOutput: "15", hidden: true },
+    ],
+    buildCode: (code: string) =>
+      `${code}\nimport sys, json\nraw = sys.stdin.read()\npayload = json.loads(raw) if raw else []\nprint(sum_numbers(payload))\n`,
+  },
+  "js-guard": {
+    tests: [{ id: "t1", input: '{"rank":4}', expectedOutput: "true" }],
+    submitTests: [
+      { id: "t1", input: '{"rank":4}', expectedOutput: "true" },
+      { id: "t2", input: '{"rank":2}', expectedOutput: "false", hidden: true },
+    ],
+    buildCode: (code: string) =>
+      `${code}\nconst fs = require("fs");\nconst input = fs.readFileSync(0, "utf8").trim();\nconst payload = input ? JSON.parse(input) : {};\nconst result = canEnterGate(payload);\nconsole.log(result ? "true" : "false");\n`,
+  },
 };
 
 export default function DemoGameplay() {
@@ -59,6 +126,7 @@ export default function DemoGameplay() {
   const [logs, setLogs] = useState<LogEntry[]>([
     { id: 1, message: "Quest chamber sealed. Awaiting Player action.", tone: "neutral" },
   ]);
+  const logCounter = useRef(1);
 
   const [isRunning, setIsRunning] = useState(false);
 
@@ -75,7 +143,9 @@ export default function DemoGameplay() {
   );
 
   const appendLog = useCallback((message: string, tone: LogEntry["tone"] = "neutral") => {
-    setLogs((current) => [{ id: Date.now(), message, tone }, ...current].slice(0, 8));
+    logCounter.current += 1;
+    const id = logCounter.current;
+    setLogs((current) => [{ id, message, tone }, ...current].slice(0, 8));
   }, []);
 
   const { health, status, crashed, resetHealth, applyDamage } = useServerHealth({
@@ -111,23 +181,122 @@ export default function DemoGameplay() {
     const hint = logSeeds[Math.floor(Math.random() * logSeeds.length)];
     appendLog(hint, "neutral");
 
-    if (code.includes("TODO") || code === quest.starterCode) {
-      appendLog("You took damage. Patch the flaw to stabilize.", "danger");
-      applyDamage(12);
-    } else {
-      appendLog("Critical Hit! Output stabilized.", "success");
+    const runner = demoQuestRunners[quest.id as keyof typeof demoQuestRunners];
+    if (!runner) {
+      appendLog("No trial script bound for this quest.", "danger");
+      setIsRunning(false);
+      return;
     }
 
-    setIsRunning(false);
+    const preparedCode = quest.language === "javascript" ? stripJsExports(code) : code;
+
+    try {
+      const response = await fetch("/api/elysia/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: quest.language,
+          code: runner.buildCode(preparedCode),
+          tests: runner.tests,
+          timeoutMs: 2000,
+        }),
+      });
+      const payload = (await response.json()) as ExecuteResponse;
+
+      if (!response.ok || payload.error || !payload.data) {
+        appendLog(payload.error?.message ?? "The system destabilized.", "danger");
+        applyDamage(10);
+        setIsRunning(false);
+        return;
+      }
+
+      const { status: runStatus, tests, stderr } = payload.data;
+      const passedCount = tests.filter((test) => test.passed).length;
+      appendLog(
+        `Trials cleared: ${passedCount}/${tests.length}.`,
+        passedCount === tests.length ? "success" : "danger",
+      );
+
+      if (runStatus === "passed") {
+        appendLog("Critical Hit! Output stabilized.", "success");
+      } else if (runStatus === "failed") {
+        appendLog("You took damage. Some trials faltered.", "danger");
+        applyDamage(8);
+      } else if (runStatus === "compile_error") {
+        appendLog("You took damage. Compile runes shattered.", "danger");
+        if (stderr) appendLog("Rune feedback recorded.", "neutral");
+        applyDamage(12);
+      } else if (runStatus === "runtime_error") {
+        appendLog("You took damage. The spell backfired.", "danger");
+        applyDamage(12);
+      } else if (runStatus === "timeout") {
+        appendLog("You took damage. The ritual timed out.", "danger");
+        applyDamage(15);
+      } else {
+        appendLog("The system destabilized.", "danger");
+        applyDamage(10);
+      }
+    } catch {
+      appendLog("The system destabilized.", "danger");
+      applyDamage(10);
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const handleSubmit = async () => {
     if (crashed || isRunning) return;
     setIsRunning(true);
     appendLog("Submitting fix to the Tribunal...", "neutral");
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    appendLog("Quest Cleared! Rewards stored in the Armory.", "success");
-    setIsRunning(false);
+
+    const runner = demoQuestRunners[quest.id as keyof typeof demoQuestRunners];
+    if (!runner) {
+      appendLog("No trial script bound for this quest.", "danger");
+      setIsRunning(false);
+      return;
+    }
+
+    const preparedCode = quest.language === "javascript" ? stripJsExports(code) : code;
+
+    try {
+      const response = await fetch("/api/elysia/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: quest.language,
+          code: runner.buildCode(preparedCode),
+          tests: runner.submitTests ?? runner.tests,
+          timeoutMs: 2000,
+        }),
+      });
+      const payload = (await response.json()) as ExecuteResponse;
+
+      if (!response.ok || payload.error || !payload.data) {
+        appendLog(payload.error?.message ?? "The system destabilized.", "danger");
+        applyDamage(12);
+        setIsRunning(false);
+        return;
+      }
+
+      const { status: runStatus, tests } = payload.data;
+      const passedCount = tests.filter((test) => test.passed).length;
+      appendLog(
+        `Trials cleared: ${passedCount}/${tests.length}.`,
+        passedCount === tests.length ? "success" : "danger",
+      );
+
+      if (runStatus === "passed") {
+        appendLog("Quest Cleared! Rewards stored in the Armory.", "success");
+      } else {
+        appendLog("You took damage. The Tribunal demands more precision.", "danger");
+        applyDamage(15);
+      }
+    } catch {
+      appendLog("The system destabilized.", "danger");
+      applyDamage(12);
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const handleStabilize = () => {
@@ -251,7 +420,10 @@ export default function DemoGameplay() {
           <h2 className="text-lg font-semibold">Encounter Logs</h2>
           <button
             type="button"
-            onClick={() => setLogs([{ id: Date.now(), message: "Logs reset.", tone: "neutral" }])}
+            onClick={() => {
+              logCounter.current += 1;
+              setLogs([{ id: logCounter.current, message: "Logs reset.", tone: "neutral" }]);
+            }}
             className="text-xs text-muted-foreground transition hover:text-foreground"
           >
             Clear
