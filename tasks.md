@@ -85,9 +85,9 @@
 
 ## Phase 9 — Currency & Economy
 
-- [ ] Implement currency tracking (Bytes/Focus/Commits)
-- [ ] Implement reward logic per performance/modifiers
-- [ ] Implement spend logic for boosts/unlocks
+- [x] Implement currency tracking (Bytes/Focus/Commits)
+- [x] Implement reward logic per performance/modifiers
+- [x] Implement spend logic for boosts/unlocks
 
 ## Phase 9.5 — Armory & Character Vessel Progression
 

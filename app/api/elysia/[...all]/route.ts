@@ -14,6 +14,7 @@ import {
   getSkillDefinition,
 } from "@/lib/skills/engine";
 import { skillCatalog } from "@/lib/skills/catalog";
+import { calculateRewards } from "@/lib/economy/engine";
 
 const NullableString = t.Union([t.String(), t.Null()]);
 
@@ -86,6 +87,29 @@ const SkillEffectsSummary = t.Object({
   stability_buffer: t.Number(),
   log_intel: t.Number(),
   reward_multiplier: t.Number(),
+});
+
+const CurrencyWallet = t.Object({
+  bytes: t.Number(),
+  focus: t.Number(),
+  commits: t.Number(),
+});
+
+const RewardModifiers = t.Object({
+  combo: t.Optional(t.Number()),
+  critical: t.Optional(t.Boolean()),
+  flawless: t.Optional(t.Boolean()),
+});
+
+const EconomyAwardRequest = t.Object({
+  bugTier: t.String(),
+  performance: t.Number(),
+  modifiers: t.Optional(RewardModifiers),
+});
+
+const EconomySpendRequest = t.Object({
+  currency: t.Union([t.Literal("bytes"), t.Literal("focus"), t.Literal("commits")]),
+  amount: t.Number(),
 });
 
 const ExecuteTestCase = t.Object({
@@ -538,6 +562,211 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         ),
         401: ApiFailure,
         404: ApiFailure,
+        409: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
+    "/economy/wallet",
+    async ({ set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to access your vault.",
+          },
+        };
+      }
+
+      const [wallet] = await db
+        .select({
+          bytes: schema.currencies.bytes,
+          focus: schema.currencies.focus,
+          commits: schema.currencies.commits,
+        })
+        .from(schema.currencies)
+        .where(eq(schema.currencies.userId, user.id))
+        .limit(1);
+
+      if (wallet) {
+        return { data: wallet, error: null };
+      }
+
+      const [created] = await db
+        .insert(schema.currencies)
+        .values({
+          id: crypto.randomUUID(),
+          userId: user.id,
+          bytes: 0,
+          focus: 0,
+          commits: 0,
+        })
+        .onConflictDoNothing({ target: [schema.currencies.userId] })
+        .returning({
+          bytes: schema.currencies.bytes,
+          focus: schema.currencies.focus,
+          commits: schema.currencies.commits,
+        });
+
+      return {
+        data: created ?? { bytes: 0, focus: 0, commits: 0 },
+        error: null,
+      };
+    },
+    {
+      response: {
+        200: ApiSuccess(CurrencyWallet),
+        401: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/economy/award",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to claim rewards.",
+          },
+        };
+      }
+
+      const reward = calculateRewards(body);
+
+      const [updated] = await db
+        .insert(schema.currencies)
+        .values({
+          id: crypto.randomUUID(),
+          userId: user.id,
+          bytes: reward.bytes,
+          focus: reward.focus,
+          commits: reward.commits,
+        })
+        .onConflictDoUpdate({
+          target: [schema.currencies.userId],
+          set: {
+            bytes: sql`${schema.currencies.bytes} + ${reward.bytes}`,
+            focus: sql`${schema.currencies.focus} + ${reward.focus}`,
+            commits: sql`${schema.currencies.commits} + ${reward.commits}`,
+          },
+        })
+        .returning({
+          bytes: schema.currencies.bytes,
+          focus: schema.currencies.focus,
+          commits: schema.currencies.commits,
+        });
+
+      return {
+        data: {
+          ...updated,
+          awarded: reward,
+        },
+        error: null,
+      };
+    },
+    {
+      body: EconomyAwardRequest,
+      response: {
+        200: ApiSuccess(
+          t.Object({
+            bytes: t.Number(),
+            focus: t.Number(),
+            commits: t.Number(),
+            awarded: CurrencyWallet,
+          }),
+        ),
+        401: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/economy/spend",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to spend resources.",
+          },
+        };
+      }
+
+      const amount = Math.max(0, Math.floor(body.amount));
+      if (amount <= 0) {
+        set.status = 409;
+        return {
+          data: null,
+          error: {
+            code: "INVALID_SPEND",
+            message: "Spend amount must be greater than zero.",
+          },
+        };
+      }
+
+      const column =
+        body.currency === "bytes"
+          ? schema.currencies.bytes
+          : body.currency === "focus"
+            ? schema.currencies.focus
+            : schema.currencies.commits;
+
+      const updatedRows = await db
+        .update(schema.currencies)
+        .set({
+          bytes:
+            body.currency === "bytes"
+              ? sql`${schema.currencies.bytes} - ${amount}`
+              : schema.currencies.bytes,
+          focus:
+            body.currency === "focus"
+              ? sql`${schema.currencies.focus} - ${amount}`
+              : schema.currencies.focus,
+          commits:
+            body.currency === "commits"
+              ? sql`${schema.currencies.commits} - ${amount}`
+              : schema.currencies.commits,
+        })
+        .where(and(eq(schema.currencies.userId, user.id), sql`${column} >= ${amount}`))
+        .returning({
+          bytes: schema.currencies.bytes,
+          focus: schema.currencies.focus,
+          commits: schema.currencies.commits,
+        });
+
+      if (!updatedRows.length) {
+        set.status = 409;
+        return {
+          data: null,
+          error: {
+            code: "LOCKED",
+            message: "Not enough resources to spend.",
+          },
+        };
+      }
+
+      return {
+        data: updatedRows[0],
+        error: null,
+      };
+    },
+    {
+      body: EconomySpendRequest,
+      response: {
+        200: ApiSuccess(CurrencyWallet),
+        401: ApiFailure,
         409: ApiFailure,
         500: ApiFailure,
       },
