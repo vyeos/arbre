@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 import { db } from "../db";
-import { challenges, skills } from "../db/schema";
+import { challenges, skills, relics } from "../db/schema";
 import { loadChallengeDefinitions } from "../lib/challenges/loader";
 import { skillCatalog } from "../lib/skills/catalog";
+import { relicCatalog } from "../lib/armory/catalog";
 
 async function main() {
   const challengeDefinitions = await loadChallengeDefinitions();
@@ -37,6 +38,24 @@ async function main() {
         maxTier: skill.maxTier,
         effects: { effects: skill.effects },
         isPassive: skill.isPassive,
+      })),
+    )
+    .onConflictDoNothing();
+
+  await db
+    .insert(relics)
+    .values(
+      relicCatalog.map((relic) => ({
+        id: relic.id,
+        name: relic.name,
+        description: relic.description,
+        slot: relic.slot,
+        rarity: relic.rarity,
+        priceGold: relic.priceGold,
+        unlockCondition: relic.unlockCondition ?? null,
+        requiresSkillId: relic.requiresSkillId ?? null,
+        isLimited: relic.isLimited ?? false,
+        isAvailable: true,
       })),
     )
     .onConflictDoNothing();

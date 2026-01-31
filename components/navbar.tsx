@@ -11,7 +11,7 @@ export default async function Navbar() {
     { href: "/demo", label: "Demo Arena" },
     { href: "/play", label: "Quest Arena" },
     { href: "/tutorial", label: "Tutorial Quest" },
-    { href: "/purchase", label: "Relic Vault" },
+    { href: "/armory", label: "Relic Vault" },
   ];
 
   return (
