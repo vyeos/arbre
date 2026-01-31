@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { executeInSandbox } from "@/lib/execution/sandbox";
 
 const NullableString = t.Union([t.String(), t.Null()]);
 
@@ -40,6 +41,45 @@ const ApiSuccess = <T extends TSchema>(data: T) =>
 const ApiFailure = t.Object({
   data: t.Null(),
   error: ApiError,
+});
+
+const ExecuteTestCase = t.Object({
+  id: t.String(),
+  input: t.String(),
+  expectedOutput: t.String(),
+  hidden: t.Optional(t.Boolean()),
+});
+
+const ExecuteRequest = t.Object({
+  language: t.Union([
+    t.Literal("javascript"),
+    t.Literal("typescript"),
+    t.Literal("python"),
+    t.Literal("c"),
+    t.Literal("cpp"),
+    t.Literal("java"),
+    t.Literal("go"),
+  ]),
+  code: t.String(),
+  tests: t.Array(ExecuteTestCase),
+  timeoutMs: t.Optional(t.Number()),
+});
+
+const ExecuteResult = t.Object({
+  status: t.String(),
+  tests: t.Array(
+    t.Object({
+      id: t.String(),
+      passed: t.Boolean(),
+      actualOutput: NullableString,
+      expectedOutput: NullableString,
+      durationMs: t.Number(),
+      hidden: t.Boolean(),
+    }),
+  ),
+  stdout: t.String(),
+  stderr: t.String(),
+  durationMs: t.Number(),
 });
 
 const resolveErrorMessage = (error: unknown) => {
@@ -188,6 +228,38 @@ export const app = new Elysia({ prefix: "/api/elysia" })
     {
       response: {
         200: ApiSuccess(t.Array(SkillSummary)),
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/execute",
+    async ({ body }) => {
+      const result = await executeInSandbox(body);
+      const hiddenMap = new Map(body.tests.map((test) => [test.id, test.hidden ?? false]));
+
+      return {
+        data: {
+          ...result,
+          tests: result.tests.map((test) => {
+            const hidden = hiddenMap.get(test.id) ?? false;
+            return {
+              id: test.id,
+              passed: test.passed,
+              actualOutput: hidden ? null : test.actualOutput,
+              expectedOutput: hidden ? null : test.expectedOutput,
+              durationMs: test.durationMs,
+              hidden,
+            };
+          }),
+        },
+        error: null,
+      };
+    },
+    {
+      body: ExecuteRequest,
+      response: {
+        200: ApiSuccess(ExecuteResult),
         500: ApiFailure,
       },
     },

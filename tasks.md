@@ -68,13 +68,13 @@
 
 ## Phase 7 — Code Execution & Validation
 
-- [ ] Build Docker-based sandbox runner
-- [ ] Support JS/TS, Python, C/C++, Java, Go
-- [ ] Enforce time/memory limits
-- [ ] Block filesystem and network
-- [ ] Add container hardening (seccomp/AppArmor)
-- [ ] Implement deterministic test validator
-- [ ] Handle syntax/runtime/timeout errors
+- [x] Build Docker-based sandbox runner
+- [x] Support JS/TS, Python, C/C++, Java, Go
+- [x] Enforce time/memory limits
+- [x] Block filesystem and network
+- [x] Add container hardening (seccomp/AppArmor)
+- [x] Implement deterministic test validator
+- [x] Handle syntax/runtime/timeout errors
 
 ## Phase 8 — Skill Tree Engine
 
