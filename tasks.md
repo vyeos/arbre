@@ -30,11 +30,11 @@
 
 ## Phase 3 — API Contract & Type Sharing
 
-- [ ] Define API routes and schemas in Elysia
-- [ ] Standardize error shapes
-- [ ] Add request/response runtime validation
-- [ ] Create shared types package
-- [ ] Export Drizzle types where needed
+- [x] Define API routes and schemas in Elysia
+- [x] Standardize error shapes
+- [x] Add request/response runtime validation
+- [x] Create shared types package
+- [x] Export Drizzle types where needed
 
 ## Phase 4 — Challenge Definition System
 
