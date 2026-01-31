@@ -75,11 +75,21 @@ export default function AuthForm({ mode }: AuthFormProps) {
         }
 
         if (isSignup) {
-          await fetch("/api/elysia/armory/vessel", {
+          const vesselResponse = await fetch("/api/elysia/armory/vessel", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(defaultVessel),
-          }).catch(() => undefined);
+          }).catch(() => null);
+
+          if (!vesselResponse || !vesselResponse.ok) {
+            const data = vesselResponse ? await vesselResponse.json().catch(() => null) : null;
+            const message =
+              data?.error?.message ??
+              data?.message ??
+              "The system destabilized. Character Vessel could not be forged.";
+            setError(message);
+            return;
+          }
         }
 
         router.push(callbackUrl);

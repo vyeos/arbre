@@ -1,1 +1,0 @@
-ALTER TABLE "challenges" ADD COLUMN "docs_link" text;

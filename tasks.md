@@ -101,22 +101,22 @@
 
 ## Phase 10 — Difficulty & Modifiers
 
-- [ ] Implement difficulty scaling
-- [ ] Implement modifiers (fog, limited edits, one-liner, etc.)
+- [x] Implement difficulty scaling
+- [x] Implement modifiers (fog, limited edits, one-liner, etc.)
 
 ## Phase 11 — Cache Storage & Performance
 
-- [ ] Add Redis cache layer
-- [ ] Define keys/TTLs/namespaces
-- [ ] Implement cache invalidation
-- [ ] Add TanStack Query for client caching
-- [ ] Add indexes and hot-path query tuning
+- [x] Add Redis cache layer
+- [x] Define keys/TTLs/namespaces
+- [x] Implement cache invalidation
+- [x] Add TanStack Query for client caching
+- [x] Add indexes and hot-path query tuning
 
 ## Phase 12 — Admin Dashboard
 
-- [ ] Build admin UI for users/challenges/skills
-- [ ] Add admin-only route protection
-- [ ] Secure admin API endpoints
+- [x] Build admin UI for users/challenges/skills
+- [x] Add admin-only route protection
+- [x] Secure admin API endpoints
 
 ## Phase 13 — Payments & Access Control
 
@@ -131,7 +131,7 @@
 - [ ] Add execution logging
 - [ ] Track crashes and validation failures
 - [ ] Add rate limiting for submissions
-- [ ] Add autencication/authorizations checks from frontend and backedn
+- [ ] Add autencication/authorizations checks from frontend and backend
 - [ ] Add monitoring + health checks
 - [ ] Add DB backups + retention policy
 
