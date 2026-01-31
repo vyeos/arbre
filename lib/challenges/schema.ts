@@ -10,7 +10,7 @@ export const challengeSchema = z.object({
   constraints: z.record(z.string(), z.unknown()).default({}),
   rewards: z.record(z.string(), z.unknown()).default({}),
   serverHealthDrainRate: z.number().int().min(1).default(1),
-  docsLink: z.string().url().nullable().optional(),
+  codexLink: z.string().url().nullable().optional(),
 });
 
 export const challengeListSchema = z.array(challengeSchema);

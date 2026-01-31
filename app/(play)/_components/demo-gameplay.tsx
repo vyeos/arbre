@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import { useServerHealth, type DrainModifier } from "@/lib/server-health";
+import type { ExecutionApiResponse, ExecutionTestCase } from "@/lib/execution/types";
 
 const demoQuests = [
   {
@@ -55,38 +56,11 @@ type LogEntry = {
   tone: "neutral" | "success" | "danger";
 };
 
-type ExecuteTestCase = {
-  id: string;
-  input: string;
-  expectedOutput: string;
-  hidden?: boolean;
-};
-
-type ExecuteResult = {
-  status: "passed" | "failed" | "compile_error" | "runtime_error" | "timeout" | "internal_error";
-  tests: Array<{
-    id: string;
-    passed: boolean;
-    actualOutput: string | null;
-    expectedOutput: string | null;
-    durationMs: number;
-    hidden: boolean;
-  }>;
-  stdout: string;
-  stderr: string;
-  durationMs: number;
-};
-
-type ExecuteResponse = {
-  data: ExecuteResult | null;
-  error: { code: string; message: string } | null;
-};
-
 const demoQuestRunners: Record<
   string,
   {
-    tests: ExecuteTestCase[];
-    submitTests?: ExecuteTestCase[];
+    tests: ExecutionTestCase[];
+    submitTests?: ExecutionTestCase[];
     buildCode: (code: string) => string;
   }
 > = {
@@ -201,7 +175,7 @@ export default function DemoGameplay() {
           timeoutMs: 2000,
         }),
       });
-      const payload = (await response.json()) as ExecuteResponse;
+      const payload = (await response.json()) as ExecutionApiResponse;
 
       if (!response.ok || payload.error || !payload.data) {
         appendLog(payload.error?.message ?? "The system destabilized.", "danger");
@@ -269,7 +243,7 @@ export default function DemoGameplay() {
           timeoutMs: 2000,
         }),
       });
-      const payload = (await response.json()) as ExecuteResponse;
+      const payload = (await response.json()) as ExecutionApiResponse;
 
       if (!response.ok || payload.error || !payload.data) {
         appendLog(payload.error?.message ?? "The system destabilized.", "danger");

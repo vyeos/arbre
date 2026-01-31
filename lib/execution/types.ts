@@ -38,6 +38,28 @@ export type ExecutionResult = {
   durationMs: number;
 };
 
+export type ExecutionApiTestResult = {
+  id: string;
+  passed: boolean;
+  actualOutput: string | null;
+  expectedOutput: string | null;
+  durationMs: number;
+  hidden: boolean;
+};
+
+export type ExecutionApiResult = {
+  status: ExecutionStatus;
+  tests: ExecutionApiTestResult[];
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+};
+
+export type ExecutionApiResponse = {
+  data: ExecutionApiResult | null;
+  error: { code: string; message: string } | null;
+};
+
 export type ExecutionRequest = {
   language: ExecutionLanguage;
   code: string;

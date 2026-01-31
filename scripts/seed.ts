@@ -21,7 +21,7 @@ async function main() {
         constraints: challenge.constraints,
         rewards: challenge.rewards,
         serverHealthDrainRate: challenge.serverHealthDrainRate,
-        docsLink: challenge.docsLink ?? null,
+        codexLink: challenge.codexLink ?? null,
       })),
     )
     .onConflictDoNothing();

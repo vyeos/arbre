@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import type { TSchema } from "@sinclair/typebox";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 import { db } from "@/db";
@@ -24,7 +24,7 @@ const ChallengeSummary = t.Object({
   description: NullableString,
   language: t.String(),
   bugTier: t.String(),
-  docsLink: NullableString,
+  codexLink: NullableString,
 });
 
 const SkillSummary = t.Object({
@@ -173,7 +173,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           description: schema.challenges.description,
           language: schema.challenges.language,
           bugTier: schema.challenges.bugTier,
-          docsLink: schema.challenges.codexLink,
+          codexLink: schema.challenges.codexLink,
         })
         .from(schema.challenges);
 
@@ -204,7 +204,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           constraints: schema.challenges.constraints,
           rewards: schema.challenges.rewards,
           serverHealthDrainRate: schema.challenges.serverHealthDrainRate,
-          docsLink: schema.challenges.codexLink,
+          codexLink: schema.challenges.codexLink,
         })
         .from(schema.challenges)
         .where(eq(schema.challenges.slug, params.slug))
@@ -243,7 +243,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
             constraints: t.Unknown(),
             rewards: t.Unknown(),
             serverHealthDrainRate: t.Number(),
-            docsLink: NullableString,
+            codexLink: NullableString,
           }),
         ),
         404: ApiFailure,
@@ -371,88 +371,158 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         };
       }
 
-      const unlocks = await db
-        .select({
-          id: schema.skillUnlocks.skillId,
-          tier: schema.skillUnlocks.tier,
-        })
-        .from(schema.skillUnlocks)
-        .where(eq(schema.skillUnlocks.userId, user.id));
+      try {
+        const result = await db.transaction(async (tx) => {
+          const unlocks = await tx
+            .select({
+              id: schema.skillUnlocks.skillId,
+              tier: schema.skillUnlocks.tier,
+            })
+            .from(schema.skillUnlocks)
+            .where(eq(schema.skillUnlocks.userId, user.id));
 
-      const [progress] = await db
-        .select({
-          id: schema.userProgress.id,
-          skillPoints: schema.userProgress.skillPoints,
-        })
-        .from(schema.userProgress)
-        .where(eq(schema.userProgress.userId, user.id))
-        .limit(1);
+          const [progress] = await tx
+            .select({
+              id: schema.userProgress.id,
+              skillPoints: schema.userProgress.skillPoints,
+            })
+            .from(schema.userProgress)
+            .where(eq(schema.userProgress.userId, user.id))
+            .limit(1);
 
-      if (!progress) {
-        set.status = 409;
-        return {
-          data: null,
-          error: {
-            code: "MISSING_PROGRESS",
-            message: "Character record missing. Return to the Overview.",
-          },
-        };
-      }
+          if (!progress) {
+            throw new Error("MISSING_PROGRESS");
+          }
 
-      const check = canUnlockSkill({
-        skill,
-        owned: unlocks,
-        skillPoints: progress.skillPoints,
-      });
+          const check = canUnlockSkill({
+            skill,
+            owned: unlocks,
+            skillPoints: progress.skillPoints,
+          });
 
-      if (!check.ok) {
-        set.status = 409;
-        return {
-          data: null,
-          error: {
-            code: "LOCKED",
-            message: check.reason,
-          },
-        };
-      }
+          if (!check.ok) {
+            const error = new Error("LOCKED");
+            (error as Error & { reason?: string }).reason = check.reason;
+            throw error;
+          }
 
-      const cost = getSkillCost(skill, check.nextTier);
-      await db.transaction(async (tx) => {
-        const existing = unlocks.find((entry) => entry.id === skill.id);
+          const currentTier = unlocks.find((entry) => entry.id === skill.id)?.tier ?? 0;
+          const nextTier = currentTier + 1;
+          const cost = getSkillCost(skill, nextTier);
 
-        if (existing) {
-          await tx
-            .update(schema.skillUnlocks)
-            .set({ tier: check.nextTier })
+          const spend = await tx
+            .update(schema.userProgress)
+            .set({ skillPoints: sql`${schema.userProgress.skillPoints} - ${cost}` })
             .where(
               and(
-                eq(schema.skillUnlocks.userId, user.id),
-                eq(schema.skillUnlocks.skillId, skill.id),
+                eq(schema.userProgress.id, progress.id),
+                sql`${schema.userProgress.skillPoints} >= ${cost}`,
               ),
-            );
-        } else {
-          await tx.insert(schema.skillUnlocks).values({
-            id: crypto.randomUUID(),
-            userId: user.id,
-            skillId: skill.id,
-            tier: check.nextTier,
-          });
+            )
+            .returning({ skillPoints: schema.userProgress.skillPoints });
+
+          if (!spend.length) {
+            throw new Error("INSUFFICIENT_SKILL_POINTS");
+          }
+
+          if (currentTier > 0) {
+            const updated = await tx
+              .update(schema.skillUnlocks)
+              .set({ tier: nextTier })
+              .where(
+                and(
+                  eq(schema.skillUnlocks.userId, user.id),
+                  eq(schema.skillUnlocks.skillId, skill.id),
+                  eq(schema.skillUnlocks.tier, currentTier),
+                ),
+              )
+              .returning({ tier: schema.skillUnlocks.tier });
+
+            if (!updated.length) {
+              throw new Error("SKILL_ALREADY_ADVANCED");
+            }
+          } else {
+            const inserted = await tx
+              .insert(schema.skillUnlocks)
+              .values({
+                id: crypto.randomUUID(),
+                userId: user.id,
+                skillId: skill.id,
+                tier: nextTier,
+              })
+              .onConflictDoNothing({
+                target: [schema.skillUnlocks.userId, schema.skillUnlocks.skillId],
+              })
+              .returning({ tier: schema.skillUnlocks.tier });
+
+            if (!inserted.length) {
+              throw new Error("SKILL_ALREADY_ADVANCED");
+            }
+          }
+
+          return {
+            tier: nextTier,
+            remainingSkillPoints: spend[0]?.skillPoints ?? 0,
+          };
+        });
+
+        return {
+          data: {
+            id: skill.id,
+            tier: result.tier,
+            remainingSkillPoints: result.remainingSkillPoints,
+          },
+          error: null,
+        };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "LOCKED";
+
+        if (reason === "MISSING_PROGRESS") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "MISSING_PROGRESS",
+              message: "Character record missing. Return to the Overview.",
+            },
+          };
         }
 
-        await tx
-          .update(schema.userProgress)
-          .set({ skillPoints: Math.max(0, progress.skillPoints - cost) })
-          .where(eq(schema.userProgress.id, progress.id));
-      });
+        if (reason === "INSUFFICIENT_SKILL_POINTS") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "Not enough Skill Points.",
+            },
+          };
+        }
 
-      return {
-        data: {
-          id: skill.id,
-          tier: check.nextTier,
-          remainingSkillPoints: Math.max(0, progress.skillPoints - cost),
-        },
-        error: null,
-      };
+        if (reason === "SKILL_ALREADY_ADVANCED") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "Skill already advanced.",
+            },
+          };
+        }
+
+        if (reason === "LOCKED" && error instanceof Error && "reason" in error) {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: (error as Error & { reason?: string }).reason ?? "Skill locked.",
+            },
+          };
+        }
+
+        throw error;
+      }
     },
     {
       body: t.Object({

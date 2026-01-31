@@ -150,6 +150,12 @@ const runDockerCommand = async ({
       child.kill("SIGKILL");
     }, timeoutMs);
 
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      const message = error instanceof Error ? error.message : "Docker spawn failed.";
+      resolve({ stdout, stderr: message, exitCode: null, timedOut: false });
+    });
+
     child.on("close", (exitCode) => {
       clearTimeout(timeout);
       resolve({ stdout, stderr, exitCode, timedOut });
@@ -186,7 +192,10 @@ const runTestCase = async (
 
   return {
     id: test.id,
-    passed: normalizeOutput(stdout) === normalizeOutput(test.expectedOutput) && !timedOut,
+    passed:
+      !timedOut &&
+      exitCode === 0 &&
+      normalizeOutput(stdout) === normalizeOutput(test.expectedOutput),
     actualOutput: normalizeOutput(stdout),
     expectedOutput: normalizeOutput(test.expectedOutput),
     durationMs,

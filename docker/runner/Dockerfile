@@ -5,7 +5,7 @@ RUN apt-get update \
     python3 \
     python3-pip \
     build-essential \
-    openjdk-17-jre-headless \
+    openjdk-17-jdk-headless \
     golang \
   && rm -rf /var/lib/apt/lists/*
 

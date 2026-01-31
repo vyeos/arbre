@@ -131,6 +131,7 @@
 - [ ] Add execution logging
 - [ ] Track crashes and validation failures
 - [ ] Add rate limiting for submissions
+- [ ] Add autencication/authorizations checks from frontend and backedn
 - [ ] Add monitoring + health checks
 - [ ] Add DB backups + retention policy
 

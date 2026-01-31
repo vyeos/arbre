@@ -8,5 +8,5 @@
   "constraints": { "maxEdits": 8 },
   "rewards": { "bytes": 50, "focus": 5, "commits": 1 },
   "serverHealthDrainRate": 1,
-  "docsLink": "https://www.typescriptlang.org/docs/handbook/2/narrowing.html"
+  "codexLink": "https://www.typescriptlang.org/docs/handbook/2/narrowing.html"
 }

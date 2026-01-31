@@ -175,6 +175,12 @@ PHASE 7: Code Execution & Validation
 • No network access
 • Harden containers (seccomp/AppArmor)
 
+Runtime Notes:
+• The sandbox runner requires a local Docker daemon.
+• Build the runner image before calling the execute endpoint:
+docker build -t arbre-runner:latest -f docker/runner/Dockerfile .
+• Set SANDBOX_RUNNER_IMAGE if you use a different tag.
+
 7.2 Validation Engine
 • Execute user code against test cases
 • Compare outputs deterministically
