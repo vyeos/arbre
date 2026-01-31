@@ -88,7 +88,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           description: schema.challenges.description,
           language: schema.challenges.language,
           bugTier: schema.challenges.bugTier,
-          docsLink: schema.challenges.docsLink,
+          docsLink: schema.challenges.codexLink,
         })
         .from(schema.challenges);
 
@@ -119,7 +119,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           constraints: schema.challenges.constraints,
           rewards: schema.challenges.rewards,
           serverHealthDrainRate: schema.challenges.serverHealthDrainRate,
-          docsLink: schema.challenges.docsLink,
+          docsLink: schema.challenges.codexLink,
         })
         .from(schema.challenges)
         .where(eq(schema.challenges.slug, params.slug))

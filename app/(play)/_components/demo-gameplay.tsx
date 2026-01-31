@@ -61,7 +61,6 @@ export default function DemoGameplay() {
   ]);
 
   const [isRunning, setIsRunning] = useState(false);
-  const [edits, setEdits] = useState(0);
 
   const resetQuestState = (nextQuestId: string) => {
     const nextQuest = demoQuests.find((item) => item.id === nextQuestId);
@@ -70,7 +69,6 @@ export default function DemoGameplay() {
     setCode(nextQuest.starterCode);
     setLogs([{ id: 1, message: "Quest chamber sealed. Awaiting Player action.", tone: "neutral" }]);
     setHealth(100);
-    setEdits(0);
   };
 
   useEffect(() => {
@@ -163,7 +161,6 @@ export default function DemoGameplay() {
               ))}
             </select>
           </label>
-          <span>Edits used: {edits}</span>
           <a
             href={quest.codexLink}
             target="_blank"
@@ -187,7 +184,6 @@ export default function DemoGameplay() {
             value={code}
             onChange={(value) => {
               setCode(value ?? "");
-              setEdits((count) => count + 1);
             }}
             theme="vs-dark"
             options={{
