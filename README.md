@@ -94,6 +94,7 @@ Define a JSON-based challenge schema including:
 • Server health drain rate
 • Constraints
 • Rewards
+• Codex link (free docs resource to encourage reading manuals)
 
 4.2 Challenge Loader
 • Load challenges from DB or filesystem

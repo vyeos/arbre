@@ -133,6 +133,7 @@ export const challenges = pgTable(
     starterCode: text("starter_code").notNull(),
     constraints: jsonb("constraints").notNull().default({}),
     rewards: jsonb("rewards").notNull().default({}),
+    docsLink: text("docs_link"),
     serverHealthDrainRate: integer("server_health_drain_rate").notNull().default(1),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
