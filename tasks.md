@@ -45,19 +45,19 @@
 
 ## Phase 5 — Code Editor & Gameplay UI
 
-- [ ] Integrate Monaco Editor
-- [ ] Enable language switching per challenge
-- [ ] Load starter code and track edits
-- [ ] Implement server health bar
-- [ ] Add log panel (real + fake logs)
-- [ ] Add Run/Submit buttons
-- [ ] Lock editor on crash
-- [ ] Add logged-out demo gameplay mode
-- [ ] Create landing page (game overview)
-- [ ] Create demo play page (logged-out)
-- [ ] Create purchase/paywall page
-- [ ] Modify auth pages (login/signup) if needed
-- [ ] Add Tutorial Quest (guided gameplay + Codex text) after UI is complete
+- [x] Integrate Monaco Editor
+- [x] Enable language switching per challenge
+- [x] Load starter code and track edits
+- [x] Implement server health bar
+- [x] Add log panel (real + fake logs)
+- [x] Add Run/Submit buttons
+- [x] Lock editor on crash
+- [x] Add logged-out demo gameplay mode
+- [x] Create landing page (game overview)
+- [x] Create demo play page (logged-out)
+- [x] Create purchase/paywall page
+- [x] Modify auth pages (login/signup) if needed
+- [x] Add Tutorial Quest (guided gameplay + Codex text) after UI is complete
 
 ## Phase 6 — Server Health Engine
 
