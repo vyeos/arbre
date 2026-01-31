@@ -22,12 +22,16 @@ export async function GET() {
     .orderBy(desc(adminAuditLogs.createdAt))
     .limit(100);
 
-  await logAdminAction({
-    adminUserId: session.user.id,
-    action: "view_audit_logs",
-    targetType: "admin_audit_logs",
-    metadata: { limit: 100 },
-  });
+  try {
+    await logAdminAction({
+      adminUserId: session.user.id,
+      action: "view_audit_logs",
+      targetType: "admin_audit_logs",
+      metadata: { limit: 100 },
+    });
+  } catch (error) {
+    console.error("Failed to log admin action for viewing audit logs:", error);
+  }
 
   return NextResponse.json({ logs });
 }

@@ -56,7 +56,8 @@
 - [ ] Create landing page (game overview)
 - [ ] Create demo play page (logged-out)
 - [ ] Create purchase/paywall page
-- [ ] Create auth pages (login/signup)
+- [ ] Modify auth pages (login/signup) if needed
+- [ ] Add Tutorial Quest (guided gameplay + Codex text) after UI is complete
 
 ## Phase 6 — Server Health Engine
 

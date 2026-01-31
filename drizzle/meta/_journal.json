@@ -15,6 +15,13 @@
       "when": 1769824277961,
       "tag": "0001_wealthy_carmella_unuscione",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769837899220,
+      "tag": "0002_serious_mantis",
+      "breakpoints": true
     }
   ]
 }

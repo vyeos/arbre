@@ -23,9 +23,15 @@ const trustedOrigins = (() => {
   return Array.from(new Set(list));
 })();
 
+const authSecret = process.env.BETTER_AUTH_SECRET;
+if (!authSecret) {
+  throw new Error("Authentication secret is not configured. Please set BETTER_AUTH_SECRET.");
+}
+
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL,
-  secret: process.env.AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET,
+  baseURL:
+    process.env.BETTER_AUTH_URL ?? (process.env.NEXT_PUBLIC_APP_URL || "https://localhost:3000"),
+  secret: authSecret,
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,

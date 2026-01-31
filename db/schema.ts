@@ -116,7 +116,10 @@ export const userProgress = pgTable(
     xp: integer("xp").notNull().default(0),
     lastPlayedAt: timestamp("last_played_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (table) => [uniqueIndex("user_progress_user_unique").on(table.userId)],
 );
@@ -133,10 +136,13 @@ export const challenges = pgTable(
     starterCode: text("starter_code").notNull(),
     constraints: jsonb("constraints").notNull().default({}),
     rewards: jsonb("rewards").notNull().default({}),
-    docsLink: text("docs_link"),
+    codexLink: text("codex_link"),
     serverHealthDrainRate: integer("server_health_drain_rate").notNull().default(1),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     uniqueIndex("challenges_slug_unique").on(table.slug),
@@ -195,7 +201,10 @@ export const skillUnlocks = pgTable(
       .references(() => skills.id, { onDelete: "cascade" }),
     tier: integer("tier").notNull().default(1),
     unlockedAt: timestamp("unlocked_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [uniqueIndex("skill_unlocks_user_skill_unique").on(table.userId, table.skillId)],
 );
@@ -210,7 +219,10 @@ export const currencies = pgTable(
     bytes: integer("bytes").notNull().default(0),
     focus: integer("focus").notNull().default(0),
     commits: integer("commits").notNull().default(0),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [uniqueIndex("currencies_user_unique").on(table.userId)],
 );

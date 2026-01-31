@@ -1,5 +1,4 @@
 import Link from "next/link";
-console.log(process.env.DATABASE_URL);
 
 const highlights = [
   {
