@@ -45,43 +45,43 @@
 
 ## Phase 5 — Code Editor & Gameplay UI
 
-- [ ] Integrate Monaco Editor
-- [ ] Enable language switching per challenge
-- [ ] Load starter code and track edits
-- [ ] Implement server health bar
-- [ ] Add log panel (real + fake logs)
-- [ ] Add Run/Submit buttons
-- [ ] Lock editor on crash
-- [ ] Add logged-out demo gameplay mode
-- [ ] Create landing page (game overview)
-- [ ] Create demo play page (logged-out)
-- [ ] Create purchase/paywall page
-- [ ] Modify auth pages (login/signup) if needed
-- [ ] Add Tutorial Quest (guided gameplay + Codex text) after UI is complete
+- [x] Integrate Monaco Editor
+- [x] Enable language switching per challenge
+- [x] Load starter code
+- [x] Implement server health bar
+- [x] Add log panel (real + fake logs)
+- [x] Add Run/Submit buttons
+- [x] Lock editor on crash
+- [x] Add logged-out demo gameplay mode
+- [x] Create landing page (game overview)
+- [x] Create demo play page (logged-out)
+- [x] Create purchase/paywall page
+- [x] Modify auth pages (login/signup) if needed
+- [x] Add Tutorial Quest (guided gameplay + Codex text) after UI is complete
 
 ## Phase 6 — Server Health Engine
 
-- [ ] Implement continuous health drain
-- [ ] Add skill-based drain modifiers
-- [ ] Map health to UI states
-- [ ] Add crash handling flow
+- [x] Implement continuous health drain
+- [x] Add skill-based drain modifiers
+- [x] Map health to UI states
+- [x] Add crash handling flow
 
 ## Phase 7 — Code Execution & Validation
 
-- [ ] Build Docker-based sandbox runner
-- [ ] Support JS/TS, Python, C/C++, Java, Go
-- [ ] Enforce time/memory limits
-- [ ] Block filesystem and network
-- [ ] Add container hardening (seccomp/AppArmor)
-- [ ] Implement deterministic test validator
-- [ ] Handle syntax/runtime/timeout errors
+- [x] Build Docker-based sandbox runner
+- [x] Support JS/TS, Python, C/C++, Java, Go
+- [x] Enforce time/memory limits
+- [x] Block filesystem and network
+- [x] Add container hardening (seccomp/AppArmor)
+- [x] Implement deterministic test validator
+- [x] Handle syntax/runtime/timeout errors
 
 ## Phase 8 — Skill Tree Engine
 
-- [ ] Define skill model + prerequisites
-- [ ] Implement unlock/spend logic
-- [ ] Implement effects system
-- [ ] Populate initial skill catalog (one-time + upgradeable)
+- [x] Define skill model + prerequisites
+- [x] Implement unlock/spend logic
+- [x] Implement effects system
+- [x] Populate initial skill catalog (one-time + upgradeable)
 
 ## Phase 9 — Currency & Economy
 

@@ -5,6 +5,14 @@ import SignOutButton from "@/components/sign-out-button";
 
 export default async function Navbar() {
   const user = await getCurrentUser();
+  const navLinks = [
+    { href: "/", label: "Character Overview" },
+    { href: "/skills", label: "Skill Branches" },
+    { href: "/demo", label: "Demo Arena" },
+    { href: "/play", label: "Quest Arena" },
+    { href: "/tutorial", label: "Tutorial Quest" },
+    { href: "/purchase", label: "Relic Vault" },
+  ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -13,6 +21,17 @@ export default async function Navbar() {
           <Link href="/" className="text-lg font-semibold tracking-wide text-foreground">
             Arbre
           </Link>
+          <div className="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-md px-2 py-1 transition hover:text-foreground"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

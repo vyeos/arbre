@@ -1,0 +1,19 @@
+import DemoGameplay from "@/app/(play)/_components/demo-gameplay";
+
+export default function PlayPage() {
+  return (
+    <div className="min-h-screen bg-linear-to-b from-background via-card to-background text-foreground">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12">
+        <header className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Quest Arena</p>
+          <h1 className="text-3xl font-semibold">Enter the Live Quest Arena</h1>
+          <p className="text-sm text-muted-foreground">
+            This is the live arena layout. Wire it to real Quest runs when the engine is ready.
+          </p>
+        </header>
+
+        <DemoGameplay />
+      </main>
+    </div>
+  );
+}

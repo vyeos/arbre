@@ -114,6 +114,7 @@ export const userProgress = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     level: integer("level").notNull().default(1),
     xp: integer("xp").notNull().default(0),
+    skillPoints: integer("skill_points").notNull().default(0),
     lastPlayedAt: timestamp("last_played_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
