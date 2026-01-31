@@ -47,7 +47,7 @@
 
 - [x] Integrate Monaco Editor
 - [x] Enable language switching per challenge
-- [x] Load starter code and track edits
+- [x] Load starter code
 - [x] Implement server health bar
 - [x] Add log panel (real + fake logs)
 - [x] Add Run/Submit buttons
@@ -61,10 +61,10 @@
 
 ## Phase 6 — Server Health Engine
 
-- [ ] Implement continuous health drain
-- [ ] Add skill-based drain modifiers
-- [ ] Map health to UI states
-- [ ] Add crash handling flow
+- [x] Implement continuous health drain
+- [x] Add skill-based drain modifiers
+- [x] Map health to UI states
+- [x] Add crash handling flow
 
 ## Phase 7 — Code Execution & Validation
 

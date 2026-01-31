@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
+import { useServerHealth, type DrainModifier } from "@/lib/server-health";
 
 const demoQuests = [
   {
@@ -55,12 +56,33 @@ export default function DemoGameplay() {
   const [questId, setQuestId] = useState(demoQuests[0].id);
   const quest = useMemo(() => demoQuests.find((item) => item.id === questId)!, [questId]);
   const [code, setCode] = useState(demoQuests[0].starterCode);
-  const [health, setHealth] = useState(100);
   const [logs, setLogs] = useState<LogEntry[]>([
     { id: 1, message: "Quest chamber sealed. Awaiting Player action.", tone: "neutral" },
   ]);
 
   const [isRunning, setIsRunning] = useState(false);
+
+  const drainModifiers = useMemo<DrainModifier[]>(
+    () => [
+      {
+        id: "focus-flow",
+        label: "Focus Flow",
+        multiplier: 0.9,
+        reason: "Passive focus aura",
+      },
+    ],
+    [],
+  );
+
+  const appendLog = useCallback((message: string, tone: LogEntry["tone"] = "neutral") => {
+    setLogs((current) => [{ id: Date.now(), message, tone }, ...current].slice(0, 8));
+  }, []);
+
+  const { health, status, crashed, resetHealth, applyDamage } = useServerHealth({
+    baseDrain: quest.serverHealthDrainRate,
+    modifiers: drainModifiers,
+    onCrash: () => appendLog("The system destabilized. Core crashed.", "danger"),
+  });
 
   const resetQuestState = (nextQuestId: string) => {
     const nextQuest = demoQuests.find((item) => item.id === nextQuestId);
@@ -68,30 +90,20 @@ export default function DemoGameplay() {
     setQuestId(nextQuestId);
     setCode(nextQuest.starterCode);
     setLogs([{ id: 1, message: "Quest chamber sealed. Awaiting Player action.", tone: "neutral" }]);
-    setHealth(100);
+    resetHealth();
   };
 
-  useEffect(() => {
-    const drain = quest.serverHealthDrainRate;
-    const interval = setInterval(() => {
-      setHealth((current) => {
-        if (current <= 0) return current;
-        return Math.max(0, current - drain);
-      });
-    }, 1200);
-
-    return () => clearInterval(interval);
-  }, [quest.serverHealthDrainRate]);
-
-  const status =
-    health <= 0 ? "Crashed" : health <= 35 ? "Critical" : health <= 65 ? "Warning" : "Stable";
-
-  const appendLog = (message: string, tone: LogEntry["tone"] = "neutral") => {
-    setLogs((current) => [{ id: Date.now(), message, tone }, ...current].slice(0, 8));
-  };
+  const statusLabel =
+    status === "crashed"
+      ? "Crashed"
+      : status === "critical"
+        ? "Critical"
+        : status === "warning"
+          ? "Warning"
+          : "Stable";
 
   const handleRun = async () => {
-    if (health <= 0 || isRunning) return;
+    if (crashed || isRunning) return;
     setIsRunning(true);
     appendLog("Channeling runes...", "neutral");
 
@@ -101,7 +113,7 @@ export default function DemoGameplay() {
 
     if (code.includes("TODO") || code === quest.starterCode) {
       appendLog("You took damage. Patch the flaw to stabilize.", "danger");
-      setHealth((current) => Math.max(0, current - 12));
+      applyDamage(12);
     } else {
       appendLog("Critical Hit! Output stabilized.", "success");
     }
@@ -110,12 +122,17 @@ export default function DemoGameplay() {
   };
 
   const handleSubmit = async () => {
-    if (health <= 0 || isRunning) return;
+    if (crashed || isRunning) return;
     setIsRunning(true);
     appendLog("Submitting fix to the Tribunal...", "neutral");
     await new Promise((resolve) => setTimeout(resolve, 900));
     appendLog("Quest Cleared! Rewards stored in the Armory.", "success");
     setIsRunning(false);
+  };
+
+  const handleStabilize = () => {
+    resetHealth();
+    appendLog("Stability restored. Core rebooted.", "success");
   };
 
   return (
@@ -129,14 +146,14 @@ export default function DemoGameplay() {
           </div>
           <div className="flex flex-col items-end gap-2">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Stability: {status}
+              Stability: {statusLabel}
             </span>
             <div className="h-2 w-48 overflow-hidden rounded-full border border-border bg-background">
               <div
                 className={`h-full transition-all ${
-                  status === "Critical"
+                  status === "critical"
                     ? "bg-destructive"
-                    : status === "Warning"
+                    : status === "warning"
                       ? "bg-amber-400"
                       : "bg-primary"
                 }`}
@@ -172,10 +189,17 @@ export default function DemoGameplay() {
         </div>
 
         <div className="relative mt-4 overflow-hidden rounded-2xl border border-border">
-          {health <= 0 ? (
+          {crashed ? (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/70 text-center">
               <p className="text-lg font-semibold text-destructive">SERVER CRASHED</p>
               <p className="text-xs text-muted-foreground">Recover in the next run, Player.</p>
+              <button
+                type="button"
+                onClick={handleStabilize}
+                className="rounded-md border border-destructive/40 bg-destructive/20 px-3 py-1 text-xs font-semibold text-destructive transition hover:bg-destructive/30"
+              >
+                Reboot Core
+              </button>
             </div>
           ) : null}
           <Editor
@@ -190,7 +214,7 @@ export default function DemoGameplay() {
               minimap: { enabled: false },
               fontSize: 14,
               scrollBeyondLastLine: false,
-              readOnly: health <= 0,
+              readOnly: crashed,
             }}
           />
         </div>
@@ -199,7 +223,7 @@ export default function DemoGameplay() {
           <button
             type="button"
             onClick={handleRun}
-            disabled={isRunning || health <= 0}
+            disabled={isRunning || crashed}
             className="rounded-lg border border-border bg-card/70 px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/70 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isRunning ? "Channeling..." : "Run"}
@@ -207,14 +231,14 @@ export default function DemoGameplay() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isRunning || health <= 0}
+            disabled={isRunning || crashed}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Submit
           </button>
           <button
             type="button"
-            onClick={() => setHealth(100)}
+            onClick={handleStabilize}
             className="rounded-lg border border-border bg-background/70 px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
           >
             Stabilize (Demo)
