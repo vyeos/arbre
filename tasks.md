@@ -38,10 +38,10 @@
 
 ## Phase 4 — Challenge Definition System
 
-- [ ] Define challenge JSON schema
-- [ ] Implement schema validation
-- [ ] Implement loader (DB/filesystem)
-- [ ] Add challenge seed data
+- [x] Define challenge JSON schema
+- [x] Implement schema validation
+- [x] Implement loader (DB/filesystem)
+- [x] Add challenge seed data
 
 ## Phase 5 — Code Editor & Gameplay UI
 

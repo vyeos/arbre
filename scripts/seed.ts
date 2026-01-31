@@ -1,25 +1,28 @@
 import { randomUUID } from "crypto";
 import { db } from "../db";
 import { challenges, skills } from "../db/schema";
+import { loadChallengeDefinitions } from "../lib/challenges/loader";
 
 async function main() {
+  const challengeDefinitions = await loadChallengeDefinitions();
+
   await db
     .insert(challenges)
-    .values([
-      {
+    .values(
+      challengeDefinitions.map((challenge) => ({
         id: randomUUID(),
-        slug: "warmup-null-check",
-        title: "Null Check Warmup",
-        description: "Fix a null access that crashes at runtime.",
-        language: "ts",
-        bugTier: "runtime",
-        starterCode:
-          "export function getName(user: { name?: string }) {\n  return user.name.toUpperCase();\n}\n",
-        constraints: { maxEdits: 8 },
-        rewards: { bytes: 50, focus: 5, commits: 1 },
-        serverHealthDrainRate: 1,
-      },
-    ])
+        slug: challenge.slug,
+        title: challenge.title,
+        description: challenge.description ?? null,
+        language: challenge.language,
+        bugTier: challenge.bugTier,
+        starterCode: challenge.starterCode,
+        constraints: challenge.constraints,
+        rewards: challenge.rewards,
+        serverHealthDrainRate: challenge.serverHealthDrainRate,
+        docsLink: challenge.docsLink ?? null,
+      })),
+    )
     .onConflictDoNothing();
 
   await db
