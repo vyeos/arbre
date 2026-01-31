@@ -165,7 +165,7 @@ export default function ArmoryPage() {
                   {relic.owned ? (
                     <button
                       type="button"
-                      disabled={isBusy}
+                      disabled={isBusy || relic.bound}
                       onClick={() => handleBind(relic.id)}
                       className="rounded-md border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-foreground transition hover:border-primary/70 disabled:cursor-not-allowed disabled:opacity-60"
                     >

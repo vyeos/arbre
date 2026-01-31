@@ -183,11 +183,15 @@ export const skills = pgTable(
     description: text("description"),
     category: text("category").notNull().default("general"),
     maxTier: integer("max_tier").notNull().default(1),
+    costGold: integer("cost_gold").notNull().default(10),
     effects: jsonb("effects").notNull().default({}),
     isPassive: boolean("is_passive").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("skills_name_unique").on(table.name)],
+  (table) => [
+    uniqueIndex("skills_name_unique").on(table.name),
+    index("skills_category_idx").on(table.category),
+  ],
 );
 
 export const skillUnlocks = pgTable(

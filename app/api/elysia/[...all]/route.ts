@@ -6,15 +6,15 @@ import crypto from "crypto";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { executeInSandbox } from "@/lib/execution/sandbox";
-import { getCurrentUser } from "@/lib/auth-session";
-import {
-  applySkillEffects,
-  canUnlockSkill,
-  getSkillCost,
-  getSkillDefinition,
-} from "@/lib/skills/engine";
+import { getCurrentUser, isAdmin } from "@/lib/auth-session";
+import { applySkillEffects, getSkillCost } from "@/lib/skills/engine";
 import { skillCatalog } from "@/lib/skills/catalog";
 import { calculateRewards } from "@/lib/economy/engine";
+import { getCache, setCache } from "@/lib/cache/redis";
+import { cacheKeys } from "@/lib/cache/keys";
+import { modifierCatalog } from "@/lib/modifiers/catalog";
+import { calculateDifficulty } from "@/lib/difficulty/engine";
+import { invalidateCoreCaches } from "@/lib/cache/invalidate";
 
 const NullableString = t.Union([t.String(), t.Null()]);
 
@@ -34,6 +34,7 @@ const SkillSummary = t.Object({
   description: NullableString,
   category: t.String(),
   maxTier: t.Number(),
+  costGold: t.Number(),
   isPassive: t.Boolean(),
 });
 
@@ -155,10 +156,53 @@ const EconomySpendRequest = t.Object({
   amount: t.Number(),
 });
 
+const ModifierEntry = t.Object({
+  id: t.String(),
+  name: t.String(),
+  description: t.String(),
+  rewardMultiplier: t.Number(),
+});
+
+const DifficultyPreviewRequest = t.Object({
+  rank: t.Number(),
+  bugTier: t.String(),
+  baseDrain: t.Number(),
+});
+
+const DifficultyPreviewResponse = t.Object({
+  label: t.String(),
+  drainMultiplier: t.Number(),
+  rewardMultiplier: t.Number(),
+  scaledDrain: t.Number(),
+});
+
+const AdminChallengeCreate = t.Object({
+  slug: t.String(),
+  title: t.String(),
+  description: t.Optional(t.String()),
+  language: t.String(),
+  bugTier: t.String(),
+  starterCode: t.String(),
+  constraints: t.Optional(t.Record(t.String(), t.Unknown())),
+  rewards: t.Optional(t.Record(t.String(), t.Unknown())),
+  codexLink: t.Optional(t.String()),
+  serverHealthDrainRate: t.Optional(t.Number()),
+});
+
+const AdminSkillCreate = t.Object({
+  name: t.String(),
+  category: t.String(),
+  maxTier: t.Number(),
+  costGold: t.Optional(t.Number()),
+  isPassive: t.Optional(t.Boolean()),
+  effects: t.Optional(t.Record(t.String(), t.Unknown())),
+});
+
 const AwardedReward = t.Object({
   bytes: t.Number(),
   focus: t.Number(),
   commits: t.Number(),
+  gold: t.Number(),
 });
 
 const ExecuteTestCase = t.Object({
@@ -209,6 +253,33 @@ const resolveErrorMessage = (error: unknown) => {
   return "The system destabilized.";
 };
 
+const requireAdmin = async (set: { status?: number | string }) => {
+  const user = await getCurrentUser();
+  if (!user) {
+    set.status = 401;
+    return {
+      data: null,
+      error: {
+        code: "UNAUTHORIZED",
+        message: "Gate sealed. Admin sigil required.",
+      },
+    };
+  }
+
+  if (!isAdmin(user)) {
+    set.status = 403;
+    return {
+      data: null,
+      error: {
+        code: "FORBIDDEN",
+        message: "Admin sigil required.",
+      },
+    };
+  }
+
+  return null;
+};
+
 export const app = new Elysia({ prefix: "/api/elysia" })
   .onError(({ code, error, set }) => {
     const status = code === "NOT_FOUND" ? 404 : 500;
@@ -238,6 +309,16 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/challenges",
     async () => {
+      const cached = await getCache<(typeof schema.challenges.$inferSelect)[]>(
+        cacheKeys.challenges,
+      );
+      if (cached) {
+        return {
+          data: cached,
+          error: null,
+        };
+      }
+
       const rows = await db
         .select({
           id: schema.challenges.id,
@@ -249,6 +330,8 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           codexLink: schema.challenges.codexLink,
         })
         .from(schema.challenges);
+
+      await setCache(cacheKeys.challenges, rows);
 
       return {
         data: rows,
@@ -265,6 +348,16 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/challenges/:slug",
     async ({ params, set }) => {
+      const cached = await getCache<typeof schema.challenges.$inferSelect>(
+        cacheKeys.challengeBySlug(params.slug),
+      );
+      if (cached) {
+        return {
+          data: cached,
+          error: null,
+        };
+      }
+
       const [row] = await db
         .select({
           id: schema.challenges.id,
@@ -293,6 +386,8 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           },
         };
       }
+
+      await setCache(cacheKeys.challengeBySlug(params.slug), row);
 
       return {
         data: row,
@@ -327,6 +422,14 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/skills",
     async () => {
+      const cached = await getCache<(typeof schema.skills.$inferSelect)[]>(cacheKeys.skills);
+      if (cached) {
+        return {
+          data: cached,
+          error: null,
+        };
+      }
+
       const rows = await db
         .select({
           id: schema.skills.id,
@@ -334,9 +437,12 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           description: schema.skills.description,
           category: schema.skills.category,
           maxTier: schema.skills.maxTier,
+          costGold: schema.skills.costGold,
           isPassive: schema.skills.isPassive,
         })
         .from(schema.skills);
+
+      await setCache(cacheKeys.skills, rows);
 
       return {
         data: rows,
@@ -352,10 +458,22 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   )
   .get(
     "/skills/catalog",
-    () => ({
-      data: skillCatalog,
-      error: null,
-    }),
+    async () => {
+      const cached = await getCache<typeof skillCatalog>(cacheKeys.skillCatalog);
+      if (cached) {
+        return {
+          data: cached,
+          error: null,
+        };
+      }
+
+      await setCache(cacheKeys.skillCatalog, skillCatalog);
+
+      return {
+        data: skillCatalog,
+        error: null,
+      };
+    },
     {
       response: {
         200: ApiSuccess(t.Array(SkillCatalogEntry)),
@@ -388,15 +506,15 @@ export const app = new Elysia({ prefix: "/api/elysia" })
 
       const [progress] = await db
         .select({
-          skillPoints: schema.userProgress.skillPoints,
+          gold: schema.currencies.gold,
         })
-        .from(schema.userProgress)
-        .where(eq(schema.userProgress.userId, user.id))
+        .from(schema.currencies)
+        .where(eq(schema.currencies.userId, user.id))
         .limit(1);
 
       return {
         data: {
-          skillPoints: progress?.skillPoints ?? 0,
+          gold: progress?.gold ?? 0,
           unlocks,
           effects: applySkillEffects(unlocks),
         },
@@ -407,7 +525,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
       response: {
         200: ApiSuccess(
           t.Object({
-            skillPoints: t.Number(),
+            gold: t.Number(),
             unlocks: t.Array(SkillUnlockEntry),
             effects: SkillEffectsSummary,
           }),
@@ -432,7 +550,21 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         };
       }
 
-      const skill = getSkillDefinition(body.id);
+      const [skill] = await db
+        .select({
+          id: schema.skills.id,
+          name: schema.skills.name,
+          description: schema.skills.description,
+          category: schema.skills.category,
+          maxTier: schema.skills.maxTier,
+          costGold: schema.skills.costGold,
+          effects: schema.skills.effects,
+          isPassive: schema.skills.isPassive,
+        })
+        .from(schema.skills)
+        .where(eq(schema.skills.id, body.id))
+        .limit(1);
+
       if (!skill) {
         set.status = 404;
         return {
@@ -453,49 +585,54 @@ export const app = new Elysia({ prefix: "/api/elysia" })
             })
             .from(schema.skillUnlocks)
             .where(eq(schema.skillUnlocks.userId, user.id));
-
-          const [progress] = await tx
+          const [wallet] = await tx
             .select({
-              id: schema.userProgress.id,
-              skillPoints: schema.userProgress.skillPoints,
+              gold: schema.currencies.gold,
             })
-            .from(schema.userProgress)
-            .where(eq(schema.userProgress.userId, user.id))
+            .from(schema.currencies)
+            .where(eq(schema.currencies.userId, user.id))
             .limit(1);
 
-          if (!progress) {
-            throw new Error("MISSING_PROGRESS");
-          }
-
-          const check = canUnlockSkill({
-            skill,
-            owned: unlocks,
-            skillPoints: progress.skillPoints,
-          });
-
-          if (!check.ok) {
-            const error = new Error("LOCKED");
-            (error as Error & { reason?: string }).reason = check.reason;
-            throw error;
-          }
+          const resolvedCosts = Array.from({ length: skill.maxTier }, () =>
+            Math.max(1, Math.floor(skill.costGold ?? 10)),
+          );
 
           const currentTier = unlocks.find((entry) => entry.id === skill.id)?.tier ?? 0;
           const nextTier = currentTier + 1;
-          const cost = getSkillCost(skill, nextTier);
+
+          if (nextTier > skill.maxTier) {
+            throw new Error("SKILL_ALREADY_ADVANCED");
+          }
+
+          const cost = getSkillCost(
+            {
+              id: skill.id,
+              name: skill.name,
+              description: skill.description ?? "",
+              branch: skill.category,
+              maxTier: skill.maxTier,
+              costs: resolvedCosts,
+              effects: [],
+              isPassive: skill.isPassive,
+            },
+            nextTier,
+          );
+
+          const availableGold = wallet?.gold ?? 0;
+          if (availableGold < cost) {
+            throw new Error("INSUFFICIENT_GOLD");
+          }
 
           const spend = await tx
-            .update(schema.userProgress)
-            .set({ skillPoints: sql`${schema.userProgress.skillPoints} - ${cost}` })
+            .update(schema.currencies)
+            .set({ gold: sql`${schema.currencies.gold} - ${cost}` })
             .where(
-              and(
-                eq(schema.userProgress.id, progress.id),
-                sql`${schema.userProgress.skillPoints} >= ${cost}`,
-              ),
+              and(eq(schema.currencies.userId, user.id), sql`${schema.currencies.gold} >= ${cost}`),
             )
-            .returning({ skillPoints: schema.userProgress.skillPoints });
+            .returning({ gold: schema.currencies.gold });
 
           if (!spend.length) {
-            throw new Error("INSUFFICIENT_SKILL_POINTS");
+            throw new Error("INSUFFICIENT_GOLD");
           }
 
           if (currentTier > 0) {
@@ -535,7 +672,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
 
           return {
             tier: nextTier,
-            remainingSkillPoints: spend[0]?.skillPoints ?? 0,
+            remainingGold: spend[0]?.gold ?? 0,
           };
         });
 
@@ -543,31 +680,20 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           data: {
             id: skill.id,
             tier: result.tier,
-            remainingSkillPoints: result.remainingSkillPoints,
+            remainingGold: result.remainingGold,
           },
           error: null,
         };
       } catch (error) {
         const reason = error instanceof Error ? error.message : "LOCKED";
 
-        if (reason === "MISSING_PROGRESS") {
-          set.status = 409;
-          return {
-            data: null,
-            error: {
-              code: "MISSING_PROGRESS",
-              message: "Character record missing. Return to the Overview.",
-            },
-          };
-        }
-
-        if (reason === "INSUFFICIENT_SKILL_POINTS") {
+        if (reason === "INSUFFICIENT_GOLD") {
           set.status = 409;
           return {
             data: null,
             error: {
               code: "LOCKED",
-              message: "Not enough Skill Points.",
+              message: "Not enough Gold.",
             },
           };
         }
@@ -606,12 +732,299 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           t.Object({
             id: t.String(),
             tier: t.Number(),
-            remainingSkillPoints: t.Number(),
+            remainingGold: t.Number(),
           }),
         ),
         401: ApiFailure,
         404: ApiFailure,
         409: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
+    "/admin/users",
+    async ({ set }) => {
+      const guard = await requireAdmin(set);
+      if (guard) return guard;
+
+      const rows = await db
+        .select({
+          id: schema.users.id,
+          name: schema.users.name,
+          email: schema.users.email,
+          role: schema.users.role,
+          createdAt: schema.users.createdAt,
+        })
+        .from(schema.users);
+
+      return {
+        data: rows.map((row) => ({
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+        })),
+        error: null,
+      };
+    },
+    {
+      response: {
+        200: ApiSuccess(
+          t.Array(
+            t.Object({
+              id: t.String(),
+              name: NullableString,
+              email: t.String(),
+              role: NullableString,
+              createdAt: t.String(),
+            }),
+          ),
+        ),
+        401: ApiFailure,
+        403: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
+    "/admin/challenges",
+    async ({ set }) => {
+      const guard = await requireAdmin(set);
+      if (guard) return guard;
+
+      const rows = await db
+        .select({
+          id: schema.challenges.id,
+          slug: schema.challenges.slug,
+          title: schema.challenges.title,
+          language: schema.challenges.language,
+          bugTier: schema.challenges.bugTier,
+          createdAt: schema.challenges.createdAt,
+        })
+        .from(schema.challenges);
+
+      return {
+        data: rows.map((row) => ({
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+        })),
+        error: null,
+      };
+    },
+    {
+      response: {
+        200: ApiSuccess(
+          t.Array(
+            t.Object({
+              id: t.String(),
+              slug: t.String(),
+              title: t.String(),
+              language: t.String(),
+              bugTier: t.String(),
+              createdAt: t.String(),
+            }),
+          ),
+        ),
+        401: ApiFailure,
+        403: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
+    "/admin/skills",
+    async ({ set }) => {
+      const guard = await requireAdmin(set);
+      if (guard) return guard;
+
+      const rows = await db
+        .select({
+          id: schema.skills.id,
+          name: schema.skills.name,
+          category: schema.skills.category,
+          maxTier: schema.skills.maxTier,
+          isPassive: schema.skills.isPassive,
+          createdAt: schema.skills.createdAt,
+        })
+        .from(schema.skills);
+
+      return {
+        data: rows.map((row) => ({
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+        })),
+        error: null,
+      };
+    },
+    {
+      response: {
+        200: ApiSuccess(
+          t.Array(
+            t.Object({
+              id: t.String(),
+              name: t.String(),
+              category: t.String(),
+              maxTier: t.Number(),
+              isPassive: t.Boolean(),
+              createdAt: t.String(),
+            }),
+          ),
+        ),
+        401: ApiFailure,
+        403: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/admin/challenges",
+    async ({ body, set }) => {
+      const guard = await requireAdmin(set);
+      if (guard) return guard;
+
+      const [created] = await db
+        .insert(schema.challenges)
+        .values({
+          id: crypto.randomUUID(),
+          slug: body.slug,
+          title: body.title,
+          description: body.description ?? null,
+          language: body.language,
+          bugTier: body.bugTier,
+          starterCode: body.starterCode,
+          constraints: body.constraints ?? {},
+          rewards: body.rewards ?? {},
+          codexLink: body.codexLink ?? null,
+          serverHealthDrainRate: body.serverHealthDrainRate ?? 1,
+        })
+        .returning({
+          id: schema.challenges.id,
+          slug: schema.challenges.slug,
+          title: schema.challenges.title,
+          language: schema.challenges.language,
+          bugTier: schema.challenges.bugTier,
+          createdAt: schema.challenges.createdAt,
+        });
+
+      await invalidateCoreCaches();
+
+      return {
+        data: {
+          ...created,
+          createdAt: created.createdAt.toISOString(),
+        },
+        error: null,
+      };
+    },
+    {
+      body: AdminChallengeCreate,
+      response: {
+        200: ApiSuccess(
+          t.Object({
+            id: t.String(),
+            slug: t.String(),
+            title: t.String(),
+            language: t.String(),
+            bugTier: t.String(),
+            createdAt: t.String(),
+          }),
+        ),
+        401: ApiFailure,
+        403: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/admin/skills",
+    async ({ body, set }) => {
+      const guard = await requireAdmin(set);
+      if (guard) return guard;
+
+      const [created] = await db
+        .insert(schema.skills)
+        .values({
+          id: crypto.randomUUID(),
+          name: body.name,
+          description: null,
+          category: body.category,
+          maxTier: body.maxTier,
+          costGold: Math.max(1, Math.floor(body.costGold ?? 10)),
+          effects: body.effects ?? {},
+          isPassive: body.isPassive ?? true,
+        })
+        .returning({
+          id: schema.skills.id,
+          name: schema.skills.name,
+          category: schema.skills.category,
+          maxTier: schema.skills.maxTier,
+          costGold: schema.skills.costGold,
+          isPassive: schema.skills.isPassive,
+          createdAt: schema.skills.createdAt,
+        });
+
+      await invalidateCoreCaches();
+
+      return {
+        data: {
+          ...created,
+          createdAt: created.createdAt.toISOString(),
+        },
+        error: null,
+      };
+    },
+    {
+      body: AdminSkillCreate,
+      response: {
+        200: ApiSuccess(
+          t.Object({
+            id: t.String(),
+            name: t.String(),
+            category: t.String(),
+            maxTier: t.Number(),
+            costGold: t.Number(),
+            isPassive: t.Boolean(),
+            createdAt: t.String(),
+          }),
+        ),
+        401: ApiFailure,
+        403: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
+    "/modifiers",
+    () => ({
+      data: modifierCatalog,
+      error: null,
+    }),
+    {
+      response: {
+        200: ApiSuccess(t.Array(ModifierEntry)),
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/difficulty/preview",
+    async ({ body }) => {
+      const profile = calculateDifficulty({
+        rank: body.rank,
+        bugTier: body.bugTier,
+      });
+
+      return {
+        data: {
+          ...profile,
+          scaledDrain: Math.max(1, Math.round(body.baseDrain * profile.drainMultiplier)),
+        },
+        error: null,
+      };
+    },
+    {
+      body: DifficultyPreviewRequest,
+      response: {
+        200: ApiSuccess(DifficultyPreviewResponse),
         500: ApiFailure,
       },
     },
@@ -636,15 +1049,43 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         .from(schema.relics);
 
       if (!user) {
+        const cached = await getCache<
+          Array<{
+            id: string;
+            name: string;
+            description: string;
+            slot: string;
+            rarity: string;
+            priceGold: number;
+            unlockCondition: string | null;
+            requiresSkillId: string | null;
+            isLimited: boolean;
+            isAvailable: boolean;
+            isSealed: boolean;
+            owned: boolean;
+            bound: boolean;
+          }>
+        >(cacheKeys.relicCatalog);
+        if (cached) {
+          return {
+            data: cached,
+            error: null,
+          };
+        }
+
+        const response = relicRows.map((relic) => ({
+          ...relic,
+          unlockCondition: relic.unlockCondition ?? null,
+          requiresSkillId: relic.requiresSkillId ?? null,
+          isSealed: Boolean(relic.unlockCondition || relic.isLimited),
+          owned: false,
+          bound: false,
+        }));
+
+        await setCache(cacheKeys.relicCatalog, response);
+
         return {
-          data: relicRows.map((relic) => ({
-            ...relic,
-            unlockCondition: relic.unlockCondition ?? null,
-            requiresSkillId: relic.requiresSkillId ?? null,
-            isSealed: Boolean(relic.unlockCondition || relic.isLimited),
-            owned: false,
-            bound: false,
-          })),
+          data: response,
           error: null,
         };
       }
@@ -674,23 +1115,25 @@ export const app = new Elysia({ prefix: "/api/elysia" })
       const ownedRelics = new Set(inventory.map((item) => item.relicId));
       const boundRelics = new Set(bindings.map((item) => item.relicId));
 
-      return {
-        data: relicRows.map((relic) => {
-          const requiresSkill = relic.requiresSkillId
-            ? !unlockedSkills.has(relic.requiresSkillId)
-            : false;
-          const isSealed =
-            !relic.isAvailable || requiresSkill || (relic.isLimited && !!relic.unlockCondition);
+      const response = relicRows.map((relic) => {
+        const requiresSkill = relic.requiresSkillId
+          ? !unlockedSkills.has(relic.requiresSkillId)
+          : false;
+        const isSealed =
+          !relic.isAvailable || requiresSkill || (relic.isLimited && !!relic.unlockCondition);
 
-          return {
-            ...relic,
-            unlockCondition: relic.unlockCondition ?? null,
-            requiresSkillId: relic.requiresSkillId ?? null,
-            isSealed,
-            owned: ownedRelics.has(relic.id),
-            bound: boundRelics.has(relic.id),
-          };
-        }),
+        return {
+          ...relic,
+          unlockCondition: relic.unlockCondition ?? null,
+          requiresSkillId: relic.requiresSkillId ?? null,
+          isSealed,
+          owned: ownedRelics.has(relic.id),
+          bound: boundRelics.has(relic.id),
+        };
+      });
+
+      return {
+        data: response,
         error: null,
       };
     },
@@ -829,6 +1272,69 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         200: ApiSuccess(CharacterVesselSchema),
         401: ApiFailure,
         409: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .put(
+    "/armory/vessel",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to refine your Character Vessel.",
+          },
+        };
+      }
+
+      const [existing] = await db
+        .select({ id: schema.characterVessels.id })
+        .from(schema.characterVessels)
+        .where(eq(schema.characterVessels.userId, user.id))
+        .limit(1);
+
+      if (!existing) {
+        await db.insert(schema.characterVessels).values({
+          id: crypto.randomUUID(),
+          userId: user.id,
+          bodyType: body.bodyType,
+          skinTone: body.skinTone,
+          hairStyle: body.hairStyle,
+          hairColor: body.hairColor,
+          eyeStyle: body.eyeStyle ?? null,
+        });
+
+        return {
+          data: body,
+          error: null,
+        };
+      }
+
+      await db
+        .update(schema.characterVessels)
+        .set({
+          bodyType: body.bodyType,
+          skinTone: body.skinTone,
+          hairStyle: body.hairStyle,
+          hairColor: body.hairColor,
+          eyeStyle: body.eyeStyle ?? null,
+        })
+        .where(eq(schema.characterVessels.userId, user.id));
+
+      return {
+        data: body,
+        error: null,
+      };
+    },
+    {
+      body: CharacterVesselSchema,
+      response: {
+        200: ApiSuccess(CharacterVesselSchema),
+        401: ApiFailure,
         500: ApiFailure,
       },
     },
@@ -1051,22 +1557,35 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         };
       }
 
-      const [binding] = await db
-        .insert(schema.relicBindings)
-        .values({
-          id: crypto.randomUUID(),
-          userId: user.id,
-          relicId: body.relicId,
-          slot: relic.slot,
-        })
-        .onConflictDoUpdate({
-          target: [schema.relicBindings.userId, schema.relicBindings.slot],
-          set: {
+      const binding = await db.transaction(async (tx) => {
+        await tx
+          .delete(schema.relicBindings)
+          .where(
+            and(
+              eq(schema.relicBindings.userId, user.id),
+              eq(schema.relicBindings.relicId, body.relicId),
+            ),
+          );
+
+        const [bound] = await tx
+          .insert(schema.relicBindings)
+          .values({
+            id: crypto.randomUUID(),
+            userId: user.id,
             relicId: body.relicId,
-            boundAt: sql`NOW()`,
-          },
-        })
-        .returning({ relicId: schema.relicBindings.relicId, slot: schema.relicBindings.slot });
+            slot: relic.slot,
+          })
+          .onConflictDoUpdate({
+            target: [schema.relicBindings.userId, schema.relicBindings.slot],
+            set: {
+              relicId: body.relicId,
+              boundAt: sql`NOW()`,
+            },
+          })
+          .returning({ relicId: schema.relicBindings.relicId, slot: schema.relicBindings.slot });
+
+        return bound;
+      });
 
       return {
         data: binding,
@@ -1170,7 +1689,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           bytes: reward.bytes,
           focus: reward.focus,
           commits: reward.commits,
-          gold: 0,
+          gold: reward.gold,
         })
         .onConflictDoUpdate({
           target: [schema.currencies.userId],
@@ -1178,6 +1697,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
             bytes: sql`${schema.currencies.bytes} + ${reward.bytes}`,
             focus: sql`${schema.currencies.focus} + ${reward.focus}`,
             commits: sql`${schema.currencies.commits} + ${reward.commits}`,
+            gold: sql`${schema.currencies.gold} + ${reward.gold}`,
           },
         })
         .returning({

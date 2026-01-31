@@ -1,1 +1,0 @@
-ALTER TABLE "challenges" RENAME COLUMN "docs_link" TO "codex_link";

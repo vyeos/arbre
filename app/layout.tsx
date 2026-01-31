@@ -3,6 +3,8 @@ import { Cinzel, Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/navbar";
+import QueryProvider from "@/components/query-provider";
+import { getCurrentUser } from "@/lib/auth-session";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -25,11 +27,13 @@ export const metadata: Metadata = {
     "Enter the debug battlefield, earn XP and Gold, and evolve your Character Vessel through Relics and Skill Branch mastery.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
@@ -40,8 +44,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          {children}
+          <QueryProvider>
+            <Navbar user={user} />
+            {children}
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

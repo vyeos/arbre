@@ -14,4 +14,5 @@ export type RewardResult = {
   bytes: number;
   focus: number;
   commits: number;
+  gold: number;
 };

@@ -58,7 +58,20 @@ CREATE TABLE "challenges" (
 	"starter_code" text NOT NULL,
 	"constraints" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"rewards" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"codex_link" text,
 	"server_health_drain_rate" integer DEFAULT 1 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "character_vessels" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"body_type" text NOT NULL,
+	"skin_tone" text NOT NULL,
+	"hair_style" text NOT NULL,
+	"hair_color" text NOT NULL,
+	"eye_style" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -69,6 +82,7 @@ CREATE TABLE "currencies" (
 	"bytes" integer DEFAULT 0 NOT NULL,
 	"focus" integer DEFAULT 0 NOT NULL,
 	"commits" integer DEFAULT 0 NOT NULL,
+	"gold" integer DEFAULT 0 NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -80,6 +94,35 @@ CREATE TABLE "purchases" (
 	"status" text NOT NULL,
 	"amount" integer NOT NULL,
 	"currency" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "relic_bindings" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"relic_id" text NOT NULL,
+	"slot" text NOT NULL,
+	"bound_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "relic_inventory" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"relic_id" text NOT NULL,
+	"acquired_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "relics" (
+	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"description" text NOT NULL,
+	"slot" text NOT NULL,
+	"rarity" text NOT NULL,
+	"price_gold" integer DEFAULT 0 NOT NULL,
+	"unlock_condition" text,
+	"requires_skill_id" text,
+	"is_limited" boolean DEFAULT false NOT NULL,
+	"is_available" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -110,6 +153,7 @@ CREATE TABLE "skills" (
 	"description" text,
 	"category" text DEFAULT 'general' NOT NULL,
 	"max_tier" integer DEFAULT 1 NOT NULL,
+	"cost_gold" integer DEFAULT 10 NOT NULL,
 	"effects" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"is_passive" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
@@ -120,6 +164,7 @@ CREATE TABLE "user_progress" (
 	"user_id" text NOT NULL,
 	"level" integer DEFAULT 1 NOT NULL,
 	"xp" integer DEFAULT 0 NOT NULL,
+	"skill_points" integer DEFAULT 0 NOT NULL,
 	"last_played_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
@@ -151,8 +196,13 @@ ALTER TABLE "admin_audit_logs" ADD CONSTRAINT "admin_audit_logs_admin_user_id_us
 ALTER TABLE "authenticators" ADD CONSTRAINT "authenticators_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "challenge_runs" ADD CONSTRAINT "challenge_runs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "challenge_runs" ADD CONSTRAINT "challenge_runs_challenge_id_challenges_id_fk" FOREIGN KEY ("challenge_id") REFERENCES "public"."challenges"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "character_vessels" ADD CONSTRAINT "character_vessels_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "currencies" ADD CONSTRAINT "currencies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "purchases" ADD CONSTRAINT "purchases_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "relic_bindings" ADD CONSTRAINT "relic_bindings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "relic_bindings" ADD CONSTRAINT "relic_bindings_relic_id_relics_id_fk" FOREIGN KEY ("relic_id") REFERENCES "public"."relics"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "relic_inventory" ADD CONSTRAINT "relic_inventory_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "relic_inventory" ADD CONSTRAINT "relic_inventory_relic_id_relics_id_fk" FOREIGN KEY ("relic_id") REFERENCES "public"."relics"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "skill_unlocks" ADD CONSTRAINT "skill_unlocks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "skill_unlocks" ADD CONSTRAINT "skill_unlocks_skill_id_skills_id_fk" FOREIGN KEY ("skill_id") REFERENCES "public"."skills"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -165,11 +215,19 @@ CREATE INDEX "challenge_runs_user_id_idx" ON "challenge_runs" USING btree ("user
 CREATE INDEX "challenge_runs_challenge_id_idx" ON "challenge_runs" USING btree ("challenge_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "challenges_slug_unique" ON "challenges" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "challenges_language_idx" ON "challenges" USING btree ("language");--> statement-breakpoint
+CREATE UNIQUE INDEX "character_vessels_user_unique" ON "character_vessels" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "currencies_user_unique" ON "currencies" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "purchases_provider_ref_unique" ON "purchases" USING btree ("provider_ref");--> statement-breakpoint
 CREATE INDEX "purchases_user_id_idx" ON "purchases" USING btree ("user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "relic_bindings_user_slot_unique" ON "relic_bindings" USING btree ("user_id","slot");--> statement-breakpoint
+CREATE UNIQUE INDEX "relic_bindings_user_relic_unique" ON "relic_bindings" USING btree ("user_id","relic_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "relic_inventory_user_relic_unique" ON "relic_inventory" USING btree ("user_id","relic_id");--> statement-breakpoint
+CREATE INDEX "relic_inventory_user_idx" ON "relic_inventory" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "relics_slot_idx" ON "relics" USING btree ("slot");--> statement-breakpoint
+CREATE INDEX "relics_rarity_idx" ON "relics" USING btree ("rarity");--> statement-breakpoint
 CREATE INDEX "sessions_userId_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "skill_unlocks_user_skill_unique" ON "skill_unlocks" USING btree ("user_id","skill_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "skills_name_unique" ON "skills" USING btree ("name");--> statement-breakpoint
+CREATE INDEX "skills_category_idx" ON "skills" USING btree ("category");--> statement-breakpoint
 CREATE UNIQUE INDEX "user_progress_user_unique" ON "user_progress" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "verificationTokens_identifier_idx" ON "verification_tokens" USING btree ("identifier");
