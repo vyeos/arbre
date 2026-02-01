@@ -21,7 +21,22 @@ export const getRedisClient = () => {
     return null;
   }
   try {
-    redisClient = new Redis(url, { lazyConnect: true });
+    redisClient = new Redis(url, {
+      lazyConnect: true,
+      tls: url.startsWith("rediss://") ? { rejectUnauthorized: false } : undefined,
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true,
+      retryStrategy: (times) => {
+        if (times > 3) return null;
+        return Math.min(times * 50, 2000);
+      },
+    });
+
+    // Handle connection errors
+    redisClient.on("error", (error) => {
+      warnDev("Redis error event:", error);
+    });
+
     return redisClient;
   } catch (error) {
     warnDev("Redis disabled: failed to initialize Redis client.", error);
@@ -31,6 +46,15 @@ export const getRedisClient = () => {
 
 export const ensureConnected = async (client: Redis) => {
   if (client.status === "ready") return;
+
+  // If already connecting or reconnecting, wait for existing promise
+  if (client.status === "connecting" || client.status === "reconnecting") {
+    if (connectPromise) {
+      await connectPromise;
+      return;
+    }
+  }
+
   if (!connectPromise) {
     connectPromise = client.connect().catch((error) => {
       connectPromise = null;
