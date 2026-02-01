@@ -33,6 +33,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await getCurrentUser();
+  const navbarUser = user
+    ? {
+        id: user.id,
+        name: user.name ?? null,
+        email: user.email,
+        role: user.role ?? null,
+      }
+    : null;
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -45,7 +53,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <Navbar user={user} />
+            <Navbar user={navbarUser} />
             {children}
           </QueryProvider>
         </ThemeProvider>

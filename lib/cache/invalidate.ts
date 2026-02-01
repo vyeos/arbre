@@ -1,18 +1,12 @@
 import { cacheKeys } from "./keys";
-import Redis from "ioredis";
-
-const getRedisClient = () => {
-  const url = process.env.REDIS_URL;
-  if (!url) return null;
-  return new Redis(url);
-};
+import { ensureConnected, getRedisClient } from "./redis";
 
 export const invalidateCache = async (keys: string[]) => {
   const client = getRedisClient();
   if (!client) return false;
   try {
+    await ensureConnected(client);
     await client.del(...keys);
-    await client.quit();
     return true;
   } catch {
     return false;

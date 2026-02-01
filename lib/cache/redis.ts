@@ -1,13 +1,44 @@
 import Redis from "ioredis";
 
 let redisClient: Redis | null = null;
+let connectPromise: Promise<void> | null = null;
 
-const getRedisClient = () => {
+const warnDev = (message: string, error?: unknown) => {
+  if (process.env.NODE_ENV !== "production") {
+    if (error) {
+      console.warn(message, error);
+    } else {
+      console.warn(message);
+    }
+  }
+};
+
+export const getRedisClient = () => {
   if (redisClient) return redisClient;
   const url = process.env.REDIS_URL;
-  if (!url) return null;
-  redisClient = new Redis(url, { lazyConnect: true });
-  return redisClient;
+  if (!url) {
+    warnDev("Redis disabled: REDIS_URL is not set.");
+    return null;
+  }
+  try {
+    redisClient = new Redis(url, { lazyConnect: true });
+    return redisClient;
+  } catch (error) {
+    warnDev("Redis disabled: failed to initialize Redis client.", error);
+    return null;
+  }
+};
+
+export const ensureConnected = async (client: Redis) => {
+  if (client.status === "ready") return;
+  if (!connectPromise) {
+    connectPromise = client.connect().catch((error) => {
+      connectPromise = null;
+      warnDev("Redis connection failed. Cache operations will be skipped.", error);
+      throw error;
+    });
+  }
+  await connectPromise;
 };
 
 export const getCache = async <T>(key: string): Promise<T | null> => {
@@ -15,9 +46,7 @@ export const getCache = async <T>(key: string): Promise<T | null> => {
   if (!client) return null;
 
   try {
-    if (client.status === "wait") {
-      await client.connect();
-    }
+    await ensureConnected(client);
     const value = await client.get(key);
     if (!value) return null;
     return JSON.parse(value) as T;
@@ -31,9 +60,7 @@ export const setCache = async (key: string, value: unknown, ttlSeconds = 120) =>
   if (!client) return false;
 
   try {
-    if (client.status === "wait") {
-      await client.connect();
-    }
+    await ensureConnected(client);
     await client.set(key, JSON.stringify(value), "EX", ttlSeconds);
     return true;
   } catch {
