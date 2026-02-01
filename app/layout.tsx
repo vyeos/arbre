@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/navbar";
 import QueryProvider from "@/components/query-provider";
 import { getCurrentUser } from "@/lib/auth-session";
+import { ensurePlayerState } from "@/lib/game/player-state";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -33,6 +34,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await getCurrentUser();
+  if (user) {
+    await ensurePlayerState(user.id);
+  }
   const navbarUser = user
     ? {
         id: user.id,

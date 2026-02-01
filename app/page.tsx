@@ -47,6 +47,12 @@ export default function Page() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
+                href="/demo"
+                className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+              >
+                Play Demo (No Account)
+              </Link>
+              <Link
                 href="/signup"
                 className="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
               >
@@ -108,6 +114,12 @@ export default function Page() {
                 grants XP, Skill Points, and the power to shape your build.
               </p>
               <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/demo"
+                  className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                >
+                  Try Demo (No Signup)
+                </Link>
                 <Link
                   href="/play"
                   className="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"

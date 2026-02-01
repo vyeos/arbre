@@ -7,7 +7,11 @@ import { relicCatalog } from "../lib/armory/catalog";
 import { invalidateCoreCaches } from "../lib/cache/invalidate";
 
 async function main() {
+  console.log("🌱 Starting database seed...");
+
+  //  ==== 1. CHALLENGES (Quests / Encounters) ====
   const challengeDefinitions = await loadChallengeDefinitions();
+  console.log(`📚 Seeding ${challengeDefinitions.length} challenges...`);
 
   await db
     .insert(challenges)
@@ -28,6 +32,9 @@ async function main() {
     )
     .onConflictDoNothing();
 
+  // ==== 2. SKILLS (Skill Tree) ====
+  console.log(`🛠  Seeding ${skillCatalog.length} skills...`);
+
   await db
     .insert(skills)
     .values(
@@ -37,11 +44,15 @@ async function main() {
         description: skill.description,
         category: skill.branch,
         maxTier: skill.maxTier,
+        costGold: skill.costs[0] ?? 10,
         effects: { effects: skill.effects },
         isPassive: skill.isPassive,
       })),
     )
     .onConflictDoNothing();
+
+  // ==== 3. RELICS (Cosmetics) ====
+  console.log(`✨ Seeding ${relicCatalog.length} relics...`);
 
   await db
     .insert(relics)
@@ -62,14 +73,20 @@ async function main() {
     .onConflictDoNothing();
 
   await invalidateCoreCaches();
+
+  const totalRows = challengeDefinitions.length + skillCatalog.length + relicCatalog.length;
+  console.log(`✅ Seed complete: ${totalRows} rows inserted`);
+  console.log(`   - ${challengeDefinitions.length} challenges`);
+  console.log(`   - ${skillCatalog.length} skills`);
+  console.log(`   - ${relicCatalog.length} relics`);
 }
 
 main()
   .then(() => {
-    console.log("Seed complete");
+    console.log("🎉 Database seeding successful");
     process.exit(0);
   })
   .catch((error) => {
-    console.error("Seed failed", error);
+    console.error("❌ Seed failed", error);
     process.exit(1);
   });

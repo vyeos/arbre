@@ -134,6 +134,12 @@ export default function Navbar({ user }: { user: User | null }) {
           ) : (
             <>
               <Link
+                href="/demo"
+                className="rounded-lg border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 transition hover:border-emerald-500"
+              >
+                Try Demo
+              </Link>
+              <Link
                 href="/login"
                 className="rounded-lg border border-border bg-card/70 px-3 py-2 text-xs font-semibold text-foreground transition hover:border-primary/60"
               >
