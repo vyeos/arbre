@@ -26,6 +26,36 @@ const ChallengeSummary = t.Object({
   language: t.String(),
   bugTier: t.String(),
   codexLink: NullableString,
+  createdAt: t.String(),
+});
+
+type ChallengeSummaryRow = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  language: string;
+  bugTier: string;
+  codexLink: string | null;
+  createdAt: string;
+};
+
+const QuestStatus = t.Union([
+  t.Literal("ACTIVE"),
+  t.Literal("COMPLETED"),
+  t.Literal("LOCKED"),
+  t.Literal("SKIPPED"),
+]);
+
+const QuestStateEntry = t.Object({
+  challengeId: t.String(),
+  status: QuestStatus,
+  finalCode: NullableString,
+});
+
+const QuestStateResponse = t.Object({
+  activeChallengeId: NullableString,
+  states: t.Array(QuestStateEntry),
 });
 
 const SkillSummary = t.Object({
@@ -280,6 +310,128 @@ const requireAdmin = async (set: { status?: number | string }) => {
   return null;
 };
 
+const coerceReward = (value: unknown) => {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
+};
+
+const normalizeRewards = (raw: unknown) => {
+  const rewards = (raw ?? {}) as Record<string, unknown>;
+  return {
+    bytes: coerceReward(rewards.bytes),
+    focus: coerceReward(rewards.focus),
+    commits: coerceReward(rewards.commits),
+    gold: coerceReward(rewards.gold),
+  };
+};
+
+const loadOrderedChallenges = async () =>
+  db
+    .select({
+      id: schema.challenges.id,
+      createdAt: schema.challenges.createdAt,
+    })
+    .from(schema.challenges)
+    .orderBy(schema.challenges.createdAt, schema.challenges.id);
+
+const ensureQuestStates = async (userId: string) => {
+  const challenges = await loadOrderedChallenges();
+  if (!challenges.length) {
+    return { activeChallengeId: null, states: [] as (typeof schema.questStates.$inferSelect)[] };
+  }
+
+  const existing = await db
+    .select({
+      challengeId: schema.questStates.challengeId,
+      status: schema.questStates.status,
+      finalCode: schema.questStates.finalCode,
+    })
+    .from(schema.questStates)
+    .where(eq(schema.questStates.userId, userId));
+
+  const existingSet = new Set(existing.map((entry) => entry.challengeId));
+  const missing = challenges.filter((entry) => !existingSet.has(entry.id));
+
+  if (missing.length) {
+    await db.insert(schema.questStates).values(
+      missing.map((entry, index) => {
+        const status = (existing.length === 0 && index === 0 ? "ACTIVE" : "LOCKED") as
+          | "ACTIVE"
+          | "LOCKED";
+        return {
+          id: crypto.randomUUID(),
+          userId,
+          challengeId: entry.id,
+          status,
+        };
+      }),
+    );
+  }
+
+  const states = await db
+    .select({
+      challengeId: schema.questStates.challengeId,
+      status: schema.questStates.status,
+      finalCode: schema.questStates.finalCode,
+    })
+    .from(schema.questStates)
+    .where(eq(schema.questStates.userId, userId));
+
+  const orderIndex = new Map(challenges.map((entry, index) => [entry.id, index]));
+  const activeStates = states.filter((entry) => entry.status === "ACTIVE");
+  const selectNextByStatus = (status: "SKIPPED" | "LOCKED") =>
+    states
+      .filter((entry) => entry.status === status)
+      .sort(
+        (a, b) => (orderIndex.get(a.challengeId) ?? 0) - (orderIndex.get(b.challengeId) ?? 0),
+      )[0];
+
+  let active = activeStates.sort(
+    (a, b) => (orderIndex.get(a.challengeId) ?? 0) - (orderIndex.get(b.challengeId) ?? 0),
+  )[0];
+
+  if (!active) {
+    active = selectNextByStatus("SKIPPED") ?? selectNextByStatus("LOCKED");
+    if (active) {
+      await db
+        .update(schema.questStates)
+        .set({ status: "ACTIVE" })
+        .where(
+          and(
+            eq(schema.questStates.userId, userId),
+            eq(schema.questStates.challengeId, active.challengeId),
+          ),
+        );
+    }
+  }
+
+  if (activeStates.length > 1 || (active && activeStates.length === 1 && activeStates[0])) {
+    await db
+      .update(schema.questStates)
+      .set({ status: "LOCKED" })
+      .where(
+        and(
+          eq(schema.questStates.userId, userId),
+          eq(schema.questStates.status, "ACTIVE"),
+          active ? sql`${schema.questStates.challengeId} <> ${active.challengeId}` : sql`true`,
+        ),
+      );
+  }
+
+  const refreshed = await db
+    .select({
+      challengeId: schema.questStates.challengeId,
+      status: schema.questStates.status,
+      finalCode: schema.questStates.finalCode,
+    })
+    .from(schema.questStates)
+    .where(eq(schema.questStates.userId, userId));
+
+  const activeChallengeId =
+    refreshed.find((entry) => entry.status === "ACTIVE")?.challengeId ?? null;
+  return { activeChallengeId, states: refreshed };
+};
+
 export const app = new Elysia({ prefix: "/api/elysia" })
   .onError(({ code, error, set }) => {
     const status = code === "NOT_FOUND" ? 404 : 500;
@@ -309,12 +461,16 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/challenges",
     async () => {
-      const cached = await getCache<(typeof schema.challenges.$inferSelect)[]>(
-        cacheKeys.challenges,
-      );
+      const cached = await getCache<ChallengeSummaryRow[]>(cacheKeys.challenges);
       if (cached) {
         return {
-          data: cached,
+          data: cached.map((row) => ({
+            ...row,
+            createdAt:
+              typeof row.createdAt === "string"
+                ? row.createdAt
+                : new Date(row.createdAt).toISOString(),
+          })),
           error: null,
         };
       }
@@ -328,13 +484,19 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           language: schema.challenges.language,
           bugTier: schema.challenges.bugTier,
           codexLink: schema.challenges.codexLink,
+          createdAt: schema.challenges.createdAt,
         })
         .from(schema.challenges);
 
-      await setCache(cacheKeys.challenges, rows);
+      const normalized = rows.map((row) => ({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+      }));
+
+      await setCache(cacheKeys.challenges, normalized);
 
       return {
-        data: rows,
+        data: normalized,
         error: null,
       };
     },
@@ -415,6 +577,423 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           }),
         ),
         404: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .get(
+    "/quests/state",
+    async ({ set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to access your Quest states.",
+          },
+        };
+      }
+
+      const result = await ensureQuestStates(user.id);
+      return {
+        data: result,
+        error: null,
+      };
+    },
+    {
+      response: {
+        200: ApiSuccess(QuestStateResponse),
+        401: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/quests/complete",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to bind quest victories.",
+          },
+        };
+      }
+
+      await ensureQuestStates(user.id);
+      const challenges = await loadOrderedChallenges();
+      const orderIndex = new Map(challenges.map((entry, index) => [entry.id, index]));
+
+      try {
+        const result = await db.transaction(async (tx) => {
+          const [state] = await tx
+            .select({
+              status: schema.questStates.status,
+            })
+            .from(schema.questStates)
+            .where(
+              and(
+                eq(schema.questStates.userId, user.id),
+                eq(schema.questStates.challengeId, body.challengeId),
+              ),
+            )
+            .limit(1);
+
+          if (!state) {
+            throw new Error("QUEST_NOT_FOUND");
+          }
+
+          if (state.status !== "ACTIVE") {
+            throw new Error("QUEST_LOCKED");
+          }
+
+          const [challenge] = await tx
+            .select({
+              rewards: schema.challenges.rewards,
+            })
+            .from(schema.challenges)
+            .where(eq(schema.challenges.id, body.challengeId))
+            .limit(1);
+
+          if (!challenge) {
+            throw new Error("QUEST_NOT_FOUND");
+          }
+
+          const reward = normalizeRewards(challenge.rewards);
+
+          await tx
+            .update(schema.questStates)
+            .set({
+              status: "COMPLETED",
+              finalCode: body.finalCode,
+            })
+            .where(
+              and(
+                eq(schema.questStates.userId, user.id),
+                eq(schema.questStates.challengeId, body.challengeId),
+              ),
+            );
+
+          const [wallet] = await tx
+            .insert(schema.currencies)
+            .values({
+              id: crypto.randomUUID(),
+              userId: user.id,
+              bytes: reward.bytes,
+              focus: reward.focus,
+              commits: reward.commits,
+              gold: reward.gold,
+            })
+            .onConflictDoUpdate({
+              target: [schema.currencies.userId],
+              set: {
+                bytes: sql`${schema.currencies.bytes} + ${reward.bytes}`,
+                focus: sql`${schema.currencies.focus} + ${reward.focus}`,
+                commits: sql`${schema.currencies.commits} + ${reward.commits}`,
+                gold: sql`${schema.currencies.gold} + ${reward.gold}`,
+              },
+            })
+            .returning({
+              bytes: schema.currencies.bytes,
+              focus: schema.currencies.focus,
+              commits: schema.currencies.commits,
+              gold: schema.currencies.gold,
+            });
+
+          const states = await tx
+            .select({
+              challengeId: schema.questStates.challengeId,
+              status: schema.questStates.status,
+            })
+            .from(schema.questStates)
+            .where(eq(schema.questStates.userId, user.id));
+
+          const nextSkipped = states
+            .filter((entry) => entry.status === "SKIPPED")
+            .sort(
+              (a, b) => (orderIndex.get(a.challengeId) ?? 0) - (orderIndex.get(b.challengeId) ?? 0),
+            )[0];
+
+          let nextActiveId: string | null = null;
+          if (nextSkipped) {
+            nextActiveId = nextSkipped.challengeId;
+          } else {
+            const currentIndex = orderIndex.get(body.challengeId) ?? -1;
+            const nextLocked = states
+              .filter((entry) => entry.status === "LOCKED")
+              .sort(
+                (a, b) =>
+                  (orderIndex.get(a.challengeId) ?? 0) - (orderIndex.get(b.challengeId) ?? 0),
+              )
+              .find((entry) => (orderIndex.get(entry.challengeId) ?? 0) > currentIndex);
+            nextActiveId = nextLocked?.challengeId ?? null;
+          }
+
+          if (nextActiveId) {
+            await tx
+              .update(schema.questStates)
+              .set({ status: "LOCKED" })
+              .where(
+                and(
+                  eq(schema.questStates.userId, user.id),
+                  eq(schema.questStates.status, "ACTIVE"),
+                ),
+              );
+
+            await tx
+              .update(schema.questStates)
+              .set({ status: "ACTIVE" })
+              .where(
+                and(
+                  eq(schema.questStates.userId, user.id),
+                  eq(schema.questStates.challengeId, nextActiveId),
+                ),
+              );
+          }
+
+          return { wallet: wallet ?? null, reward };
+        });
+
+        return {
+          data: result,
+          error: null,
+        };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "LOCKED";
+        if (reason === "QUEST_LOCKED") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "Quest is not active.",
+            },
+          };
+        }
+        if (reason === "QUEST_NOT_FOUND") {
+          set.status = 404;
+          return {
+            data: null,
+            error: {
+              code: "NOT_FOUND",
+              message: "Quest not found.",
+            },
+          };
+        }
+        throw error;
+      }
+    },
+    {
+      body: t.Object({
+        challengeId: t.String(),
+        finalCode: t.String(),
+      }),
+      response: {
+        200: ApiSuccess(
+          t.Object({
+            wallet: CurrencyWallet,
+            reward: AwardedReward,
+          }),
+        ),
+        401: ApiFailure,
+        404: ApiFailure,
+        409: ApiFailure,
+        500: ApiFailure,
+      },
+    },
+  )
+  .post(
+    "/quests/skip",
+    async ({ body, set }) => {
+      const user = await getCurrentUser();
+      if (!user) {
+        set.status = 401;
+        return {
+          data: null,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Gate sealed. Sign in to skip a quest.",
+          },
+        };
+      }
+
+      await ensureQuestStates(user.id);
+      const challenges = await loadOrderedChallenges();
+      const orderIndex = new Map(challenges.map((entry, index) => [entry.id, index]));
+
+      try {
+        const result = await db.transaction(async (tx) => {
+          const [state] = await tx
+            .select({
+              status: schema.questStates.status,
+            })
+            .from(schema.questStates)
+            .where(
+              and(
+                eq(schema.questStates.userId, user.id),
+                eq(schema.questStates.challengeId, body.challengeId),
+              ),
+            )
+            .limit(1);
+
+          if (!state) {
+            throw new Error("QUEST_NOT_FOUND");
+          }
+
+          if (state.status !== "ACTIVE") {
+            throw new Error("QUEST_LOCKED");
+          }
+
+          const [wallet] = await tx
+            .select({
+              bytes: schema.currencies.bytes,
+              focus: schema.currencies.focus,
+              commits: schema.currencies.commits,
+              gold: schema.currencies.gold,
+            })
+            .from(schema.currencies)
+            .where(eq(schema.currencies.userId, user.id))
+            .limit(1);
+
+          const availableBytes = wallet?.bytes ?? 0;
+          if (availableBytes < body.cost) {
+            throw new Error("INSUFFICIENT_BYTES");
+          }
+
+          const [updatedWallet] = await tx
+            .update(schema.currencies)
+            .set({ bytes: sql`${schema.currencies.bytes} - ${body.cost}` })
+            .where(
+              and(
+                eq(schema.currencies.userId, user.id),
+                sql`${schema.currencies.bytes} >= ${body.cost}`,
+              ),
+            )
+            .returning({
+              bytes: schema.currencies.bytes,
+              focus: schema.currencies.focus,
+              commits: schema.currencies.commits,
+              gold: schema.currencies.gold,
+            });
+
+          if (!updatedWallet) {
+            throw new Error("INSUFFICIENT_BYTES");
+          }
+
+          await tx
+            .update(schema.questStates)
+            .set({ status: "SKIPPED" })
+            .where(
+              and(
+                eq(schema.questStates.userId, user.id),
+                eq(schema.questStates.challengeId, body.challengeId),
+              ),
+            );
+
+          const currentIndex = orderIndex.get(body.challengeId) ?? -1;
+          const states = await tx
+            .select({
+              challengeId: schema.questStates.challengeId,
+              status: schema.questStates.status,
+            })
+            .from(schema.questStates)
+            .where(eq(schema.questStates.userId, user.id));
+
+          const nextLocked = states
+            .filter((entry) => entry.status === "LOCKED")
+            .sort(
+              (a, b) => (orderIndex.get(a.challengeId) ?? 0) - (orderIndex.get(b.challengeId) ?? 0),
+            )
+            .find((entry) => (orderIndex.get(entry.challengeId) ?? 0) > currentIndex);
+
+          if (!nextLocked) {
+            throw new Error("NO_NEXT_QUEST");
+          }
+
+          await tx
+            .update(schema.questStates)
+            .set({ status: "LOCKED" })
+            .where(
+              and(eq(schema.questStates.userId, user.id), eq(schema.questStates.status, "ACTIVE")),
+            );
+
+          await tx
+            .update(schema.questStates)
+            .set({ status: "ACTIVE" })
+            .where(
+              and(
+                eq(schema.questStates.userId, user.id),
+                eq(schema.questStates.challengeId, nextLocked.challengeId),
+              ),
+            );
+
+          return { wallet: updatedWallet };
+        });
+
+        return {
+          data: result,
+          error: null,
+        };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "LOCKED";
+        if (reason === "INSUFFICIENT_BYTES") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "Not enough Bytes.",
+            },
+          };
+        }
+        if (reason === "QUEST_LOCKED") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "Quest is not active.",
+            },
+          };
+        }
+        if (reason === "QUEST_NOT_FOUND") {
+          set.status = 404;
+          return {
+            data: null,
+            error: {
+              code: "NOT_FOUND",
+              message: "Quest not found.",
+            },
+          };
+        }
+        if (reason === "NO_NEXT_QUEST") {
+          set.status = 409;
+          return {
+            data: null,
+            error: {
+              code: "LOCKED",
+              message: "No further quests are available to skip into.",
+            },
+          };
+        }
+        throw error;
+      }
+    },
+    {
+      body: t.Object({
+        challengeId: t.String(),
+        cost: t.Number(),
+      }),
+      response: {
+        200: ApiSuccess(t.Object({ wallet: CurrencyWallet })),
+        401: ApiFailure,
+        404: ApiFailure,
+        409: ApiFailure,
         500: ApiFailure,
       },
     },

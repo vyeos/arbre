@@ -1,4 +1,4 @@
-import DemoGameplay from "@/app/(play)/_components/demo-gameplay";
+import QuestGameplay from "@/app/(play)/_components/quest-gameplay";
 
 export default function PlayPage() {
   return (
@@ -8,11 +8,11 @@ export default function PlayPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Quest Arena</p>
           <h1 className="text-3xl font-semibold">Enter the Live Quest Arena</h1>
           <p className="text-sm text-muted-foreground">
-            This is the live arena layout. Wire it to real Quest runs when the engine is ready.
+            Face live encounters, earn resources, and unlock the next sealed Quest.
           </p>
         </header>
 
-        <DemoGameplay />
+        <QuestGameplay />
       </main>
     </div>
   );

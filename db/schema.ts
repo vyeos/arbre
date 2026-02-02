@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["player", "admin"]);
+export const questStatusEnum = pgEnum("quest_status", ["ACTIVE", "COMPLETED", "LOCKED", "SKIPPED"]);
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -148,6 +149,29 @@ export const challenges = pgTable(
   (table) => [
     uniqueIndex("challenges_slug_unique").on(table.slug),
     index("challenges_language_idx").on(table.language),
+  ],
+);
+
+export const questStates = pgTable(
+  "quest_states",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    challengeId: text("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    status: questStatusEnum("status").notNull().default("LOCKED"),
+    finalCode: text("final_code"),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("quest_states_user_challenge_unique").on(table.userId, table.challengeId),
+    index("quest_states_user_idx").on(table.userId),
   ],
 );
 
@@ -350,6 +374,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   skillUnlocks: many(skillUnlocks),
   challengeRuns: many(challengeRuns),
+  questStates: many(questStates),
   relicInventory: many(relicInventory),
   relicBindings: many(relicBindings),
 }));
@@ -375,6 +400,17 @@ export const challengeRunsRelations = relations(challengeRuns, ({ one }) => ({
   }),
   challenge: one(challenges, {
     fields: [challengeRuns.challengeId],
+    references: [challenges.id],
+  }),
+}));
+
+export const questStatesRelations = relations(questStates, ({ one }) => ({
+  user: one(users, {
+    fields: [questStates.userId],
+    references: [users.id],
+  }),
+  challenge: one(challenges, {
+    fields: [questStates.challengeId],
     references: [challenges.id],
   }),
 }));

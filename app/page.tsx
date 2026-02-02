@@ -47,10 +47,10 @@ export default function Page() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/demo"
+                href="/play"
                 className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
               >
-                Play Demo (No Account)
+                Enter the Quest Arena
               </Link>
               <Link
                 href="/signup"
@@ -115,10 +115,10 @@ export default function Page() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
-                  href="/demo"
+                  href="/play"
                   className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
                 >
-                  Try Demo (No Signup)
+                  Enter the Quest Arena
                 </Link>
                 <Link
                   href="/play"

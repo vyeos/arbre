@@ -134,10 +134,10 @@ export default function Navbar({ user }: { user: User | null }) {
           ) : (
             <>
               <Link
-                href="/demo"
+                href="/play"
                 className="rounded-lg border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 transition hover:border-emerald-500"
               >
-                Try Demo
+                Enter the Quest Arena
               </Link>
               <Link
                 href="/login"
