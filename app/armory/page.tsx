@@ -109,10 +109,8 @@ export default function ArmoryPage() {
     <div className="min-h-screen bg-linear-to-b from-background via-card to-background text-foreground">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12">
         <header className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Armory / Relic Vault
-          </p>
-          <h1 className="text-3xl font-semibold">Bind Relics to your Character Vessel</h1>
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Armory</p>
+          <h1 className="text-3xl font-semibold">Bind Relics to your Avatar</h1>
           <p className="text-sm text-muted-foreground">
             Acquire cosmetics with Gold earned from Quests. Relics never alter gameplay power — only
             prestige.

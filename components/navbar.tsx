@@ -30,7 +30,7 @@ export default function Navbar({ user }: { user: User | null }) {
   const navLinks = [
     { href: "/skills", label: "Skill Tree", icon: BookOpen },
     { href: "/play", label: "Quest Arena", icon: Swords },
-    { href: "/armory", label: "Relic Vault", icon: Vault },
+    { href: "/armory", label: "Armory", icon: Vault },
   ];
 
   const isActive = (href: string) => pathname === href;
@@ -111,7 +111,7 @@ export default function Navbar({ user }: { user: User | null }) {
                   <DropdownMenuItem asChild>
                     <Link href="/character" className="flex items-center gap-2 cursor-pointer">
                       <User className="h-4 w-4" />
-                      Character Vessel
+                      Avatar
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -134,12 +134,6 @@ export default function Navbar({ user }: { user: User | null }) {
           ) : (
             <>
               <Link
-                href="/play"
-                className="rounded-lg border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 transition hover:border-emerald-500"
-              >
-                Enter the Quest Arena
-              </Link>
-              <Link
                 href="/login"
                 className="rounded-lg border border-border bg-card/70 px-3 py-2 text-xs font-semibold text-foreground transition hover:border-primary/60"
               >
@@ -149,7 +143,7 @@ export default function Navbar({ user }: { user: User | null }) {
                 href="/signup"
                 className="hidden rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 sm:block"
               >
-                Forge Character Vessel
+                Forge Avatar
               </Link>
             </>
           )}

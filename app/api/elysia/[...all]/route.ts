@@ -1811,7 +1811,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           data: null,
           error: {
             code: "UNAUTHORIZED",
-            message: "Gate sealed. Sign in to bind your Character Vessel.",
+            message: "Gate sealed. Sign in to bind your Avatar.",
           },
         };
       }
@@ -1827,8 +1827,8 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         return {
           data: null,
           error: {
-            code: "VESSEL_EXISTS",
-            message: "Character Vessel already forged.",
+            code: "AVATAR_EXISTS",
+            message: "Avatar already forged.",
           },
         };
       }
@@ -1868,7 +1868,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           data: null,
           error: {
             code: "UNAUTHORIZED",
-            message: "Gate sealed. Sign in to refine your Character Vessel.",
+            message: "Gate sealed. Sign in to refine your Avatar.",
           },
         };
       }

@@ -26,7 +26,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     [isSignup],
   );
 
-  const submitLabel = isSignup ? "Forge Character Vessel" : "Enter the Gate";
+  const submitLabel = isSignup ? "Forge Avatar" : "Enter the Gate";
   const defaultVessel = {
     bodyType: "Adventurer",
     skinTone: "Dawn",
@@ -86,7 +86,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             const message =
               data?.error?.message ??
               data?.message ??
-              "The system destabilized. Character Vessel could not be forged.";
+              "The system destabilized. Avatar could not be forged.";
             setError(message);
             return;
           }
@@ -128,7 +128,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     <div className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold">
-          {isSignup ? "Forge your Character Vessel" : "Welcome back, Player"}
+          {isSignup ? "Forge your Avatar" : "Welcome back, Player"}
         </h1>
         <p className="text-sm text-muted-foreground">
           {isSignup
@@ -271,7 +271,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       <div className="text-xs text-muted-foreground">
         {isSignup ? (
           <p>
-            Already have a Character Vessel?{" "}
+            Already have an Avatar ?{" "}
             <Link href="/login" className="text-primary hover:text-primary/80">
               Enter the Gate
             </Link>
@@ -280,7 +280,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <p>
             New Player?{" "}
             <Link href="/signup" className="text-primary hover:text-primary/80">
-              Forge a Character Vessel
+              Forge an Avatar
             </Link>
           </p>
         )}

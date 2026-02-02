@@ -15,8 +15,8 @@ const highlights = [
     description: "Unlock Skill Branches, shape your build, and bend the rules of the battlefield.",
   },
   {
-    title: "Armory & Relic Vault",
-    description: "Acquire Relics, bind them to your Character Vessel, and let your victories show.",
+    title: "Armory",
+    description: "Acquire Relics, bind them to your Avatar, and let your victories show.",
   },
 ];
 
@@ -43,18 +43,18 @@ export default function Page() {
               Forging the next generation of learning RPGs
             </Badge>
             <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
-              Master the debug battlefield and evolve your Character Vessel.
+              Master the debug battlefield and evolve your Avatar.
             </h1>
             <p className="text-base text-muted-foreground md:text-lg">
-              Arbre turns coding challenges into Quest encounters. Earn XP, unlock Skill Branches,
-              and acquire Relics in the Armory — all while proving mastery under pressure.
+              Arbre turns coding quests into Quest encounters. Earn XP, unlock Skill Branches, and
+              acquire Relics in the Armory — all while proving mastery under pressure.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-500">
                 <Link href="/play">Enter the Quest Arena</Link>
               </Button>
               <Button asChild>
-                <Link href="/signup">Forge Character Vessel</Link>
+                <Link href="/signup">Forge Avatar</Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/login">Enter the Gate</Link>
@@ -64,10 +64,8 @@ export default function Page() {
 
           <Card className="bg-card/80 shadow-2xl">
             <CardHeader>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Character Vessel Blueprint
-              </p>
-              <CardDescription>Mastery displays your growth and prestige.</CardDescription>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Avatar</p>
+              <CardDescription>Avatar mastery displays growth and prestige.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
               <Card className="bg-background/70">
@@ -156,7 +154,7 @@ export default function Page() {
                   </p>
                   <CardTitle className="text-lg">Claim Relics</CardTitle>
                   <CardDescription>
-                    Visit the Relic Vault to acquire cosmetics and show your victories.
+                    Visit the Armory to acquire cosmetics and show your victories.
                   </CardDescription>
                 </CardHeader>
               </Card>

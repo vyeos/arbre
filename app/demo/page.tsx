@@ -21,7 +21,7 @@ export default function DemoPage() {
                 <Link href="/play">Enter the Quest Arena</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/signup">Forge Character Vessel</Link>
+                <Link href="/signup">Forge Avatar</Link>
               </Button>
             </div>
           </CardContent>

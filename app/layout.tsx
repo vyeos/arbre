@@ -23,9 +23,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Arbre — Code Quests & Character Vessel Progression",
+  title: "Arbre — Code Quests & Avatar Progression",
   description:
-    "Enter the debug battlefield, earn XP and Gold, and evolve your Character Vessel through Relics and Skill Branch mastery.",
+    "Enter the debug battlefield, earn XP and Gold, and evolve your Avatar through Relics and Skill Branch mastery.",
 };
 
 export default async function RootLayout({

@@ -250,7 +250,7 @@ export default function AdminDashboard() {
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="rounded-2xl border border-border bg-card/80 p-5 shadow-lg">
             <h2 className="text-lg font-semibold">Players</h2>
-            <p className="text-xs text-muted-foreground">Registered Character Vessels</p>
+            <p className="text-xs text-muted-foreground">Registered Avatars</p>
             <div className="mt-4 space-y-3 text-xs">
               {users.map((user) => (
                 <div

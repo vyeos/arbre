@@ -63,7 +63,7 @@ export const relicCatalog: RelicCatalogEntry[] = [
   {
     id: "nocturne-backdrop",
     name: "Nocturne Backdrop",
-    description: "Midnight fog behind your Character Vessel.",
+    description: "Midnight fog behind your Avatar.",
     slot: "Background",
     rarity: "Epic",
     priceGold: 360,

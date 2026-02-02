@@ -167,7 +167,7 @@ export default function CharacterOverview() {
       };
       setVessel(updated);
       window.dispatchEvent(new CustomEvent("vessel:update", { detail: updated }));
-      setStatus(vessel ? "Character Vessel updated." : "Character Vessel forged.");
+      setStatus(vessel ? "Avatar updated." : "Avatar forged.");
       await load();
     } catch {
       setError("The system destabilized.");
@@ -181,12 +181,12 @@ export default function CharacterOverview() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
         <header className="space-y-2">
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Character Overview
+            Avatar Overview
           </p>
-          <h1 className="text-3xl font-semibold">Forge and refine your Character Vessel</h1>
+          <h1 className="text-3xl font-semibold">Forge and refine your Avatar</h1>
           <p className="text-sm text-muted-foreground">
-            Your base vessel is your identity. Customize it here at any time, then bind Relics in
-            the Armory for prestige.
+            Your Avatar is your identity. Customize it here at any time, then bind Relics in the
+            Armory for prestige.
           </p>
         </header>
 
@@ -323,11 +323,7 @@ export default function CharacterOverview() {
               disabled={isSaving}
               className="mt-5 w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSaving
-                ? "Channeling..."
-                : vessel
-                  ? "Save Vessel Changes"
-                  : "Forge Character Vessel"}
+              {isSaving ? "Channeling..." : vessel ? "Save Vessel Changes" : "Forge Avatar"}
             </button>
           </div>
 
