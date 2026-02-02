@@ -102,6 +102,10 @@ export default function DemoGameplay() {
   ]);
   const logCounter = useRef(1);
 
+  const [bytes, setBytes] = useState(40);
+  const [skippedQuestIds, setSkippedQuestIds] = useState<string[]>([]);
+  const skipCost = 15;
+
   const [isRunning, setIsRunning] = useState(false);
 
   const drainModifiers = useMemo<DrainModifier[]>(
@@ -135,6 +139,23 @@ export default function DemoGameplay() {
     setCode(nextQuest.starterCode);
     setLogs([{ id: 1, message: "Quest chamber sealed. Awaiting Player action.", tone: "neutral" }]);
     resetHealth();
+  };
+
+  const handleSkip = () => {
+    if (crashed || isRunning) return;
+    if (bytes < skipCost) {
+      appendLog("Not enough Bytes to bend fate.", "danger");
+      return;
+    }
+
+    const currentIndex = demoQuests.findIndex((item) => item.id === questId);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % demoQuests.length;
+    const nextQuest = demoQuests[nextIndex];
+
+    setBytes((prev) => prev - skipCost);
+    setSkippedQuestIds((prev) => (prev.includes(questId) ? prev : [...prev, questId]));
+    appendLog("Fate bent. Quest skipped; the seal remains.", "neutral");
+    resetQuestState(nextQuest.id);
   };
 
   const statusLabel =
@@ -317,10 +338,14 @@ export default function DemoGameplay() {
               {demoQuests.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.title}
+                  {skippedQuestIds.includes(item.id) ? " (Skipped)" : ""}
                 </option>
               ))}
             </select>
           </label>
+          <div className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground">
+            Bytes: <span className="font-semibold text-foreground">{bytes}</span>
+          </div>
           <a
             href={quest.codexLink}
             target="_blank"
@@ -378,6 +403,14 @@ export default function DemoGameplay() {
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Submit
+          </button>
+          <button
+            type="button"
+            onClick={handleSkip}
+            disabled={isRunning || crashed || bytes < skipCost}
+            className="rounded-lg border border-amber-400/60 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Skip Quest ({skipCost} Bytes)
           </button>
           <button
             type="button"

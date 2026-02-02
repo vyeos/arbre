@@ -1,4 +1,349 @@
-PHASE 0: Project Initialization
+# Arbre — Core Gameplay Flow
+
+This is a learning-based RPG progression game. The Player grows through Quests, Skills, and earned power. There are no traditional tutorials, no AI assistance, and no replay farming.
+
+## Core Philosophy
+
+- Game first; learning is implicit.
+- No tutorial pages. Only floating dialog moments.
+- Progression is linear; Skills branch.
+- Completed Quests are viewable, never replayable.
+
+## System State Model
+
+Each Quest is always in one state:
+
+- **ACTIVE**: Playable
+- **COMPLETED**: Read-only review
+- **LOCKED**: Inaccessible
+- **SKIPPED**: Temporarily bypassed, returns to queue later
+
+## Text-Based Game State Diagram
+
+```
+[Landing]
+   |
+   |--(Demo Player)--> [Demo Quest 1]
+   |
+   |--(Logged-In Player)--> [Quest 1]
+
+[Quest 1]
+   |--(Success)--> [Rewards] --> [Skill Tree Intro] --> [Skill Purchase Gate] --> [Quest 2]
+   |--(Crash)----> [Server Crashed] --> [Retry Quest 1]
+   |--(Skip)-----> [Quest 2] + [Quest 1 = SKIPPED]
+
+[Quest N]
+   |--(Success)--> [Rewards] --> [Unlock Quest N+1]
+   |--(Crash)----> [Server Crashed] --> [Retry Quest N]
+   |--(Skip)-----> [Quest N+1] + [Quest N = SKIPPED]
+
+[Quest Completed]
+   |--(Open)--> [Read-Only Review]
+
+[Skipped Quest]
+   |--(Return Later)--> [ACTIVE]
+```
+
+## Quest Lifecycle
+
+**Start** → **Onboarding Dialogs** → **Play** → **Validate** → **Success/Crash/Skip** → **Transition**
+
+### Start
+
+- Player spawns directly into Quest 1.
+- No menus visible.
+
+### Onboarding Dialogs (Quest 1 only)
+
+Floating dialogs pause gameplay and appear contextually:
+
+1. Code editor basics
+2. Bug exists in the code
+3. Server Health drain and pressure
+4. Success vs Crash
+
+Dialogs are shown once and never again.
+
+### Play
+
+- Buggy code + validation runner
+- Server Health drains over time
+
+### Success
+
+- Grant Bytes / Focus / Commits immediately
+- Reward animation
+- Mark Quest as COMPLETED
+- Lock Quest from replay
+
+### Failure
+
+- Server Health reaches 0 → **SERVER CRASHED**
+- Quest stays ACTIVE; Player can retry
+
+### Skip
+
+- Player spends Bytes to skip the current Quest
+- Quest state becomes **SKIPPED**
+- Next Quest becomes **ACTIVE**
+- Skipped Quest returns to the queue after the next Quest is cleared
+- Skipped Quests are visible in the Quest selector and clearly marked
+
+## Skip Rules (Mandatory)
+
+- Skipping costs **Bytes** (economy sink)
+- Skipped Quests cannot be marked COMPLETED via skip
+- A skipped Quest can only be cleared by returning and solving it
+- Skipping is allowed only when the Quest is ACTIVE
+- Skipped Quests must be reintroduced (no permanent bypass)
+
+## Completed Quest Rules (Read-Only)
+
+- Visually marked **COMPLETED**
+- Opens in **read-only**
+- Final corrected code shown
+- Disabled: editing, running, Server Health, rewards
+- Tooltip: “This quest has already been resolved. You may review it, but not modify it.”
+
+## Skill Tree Interaction Flow
+
+After first Quest success:
+
+- Skill Tree auto-opens
+- Floating dialog explains:
+  - What Skills are
+  - Currency costs
+  - Active vs passive effects
+- Player must purchase at least one Skill to proceed
+- Skill effects apply immediately and persist
+- Skills are permanent; no resets
+
+## Skill Effects in Gameplay
+
+Skills can:
+
+- Modify Server Health drain
+- Unlock actions (undo, hints, dry run)
+- Reduce penalties
+- Modify challenge constraints
+
+## Quest Progression
+
+- After Skill purchase, unlock next Quest
+- Difficulty increases gradually
+- New bug tiers unlock over time
+- After ~3 Quests, introduce cosmetic currency (Gold)
+
+## Cosmetic Shop Introduction
+
+On first Gold earned:
+
+- Floating dialog introduces the Armory / Relic Vault
+- Cosmetics include Character Vessel skins, UI effects, editor themes
+- Cosmetics are visual only, no gameplay impact
+
+## Player States
+
+### Demo Player (Logged-Out)
+
+- Can play limited Quests
+- Can earn currency
+- Can buy Skills and Cosmetics
+- Progress is not saved
+- Must show dialog: progress resets on exit; full access requires login
+- Gameplay rules identical to full game
+
+### Logged-In Player
+
+- Full access to all systems
+- Progress is saved
+- No advantages over Demo beyond persistence
+
+## UI States & Transitions
+
+1. **Landing** → Demo or Login
+2. **Quest 1** (no menus) → Onboarding dialogs → Play
+3. **Server Crashed** → Retry Quest
+4. **Quest Success** → Reward animation
+5. **Skill Tree Intro** → Skill Purchase Gate
+6. **Quest 2+** → Normal loop
+7. **Completed Quest Review** (read-only)
+8. **Skipped Quest** → Marked and queued for return
+9. **Armory Intro** on first Gold
+
+## Strict Rules
+
+- No replaying Quests for rewards
+- No editing completed Quests
+- No skipping Skill Tree introduction
+- No direct access to locked Quests
+- No traditional level select UI
+- All onboarding via floating dialogs only
+
+## Goal
+
+Progression feels earned. Power is visible. Learning is accidental.# Arbre — Core Gameplay Flow
+
+This is a learning-based RPG progression game. The Player grows through Quests, Skills, and earned power. There are no traditional tutorials, no AI assistance, and no replay farming.
+
+## Core Philosophy
+
+- Game first; learning is implicit.
+- No tutorial pages. Only floating dialog moments.
+- Progression is linear; Skills branch.
+- Completed Quests are viewable, never replayable.
+
+## System State Model
+
+Each Quest is always in one state:
+
+- **ACTIVE**: Playable
+- **COMPLETED**: Read-only review
+- **LOCKED**: Inaccessible
+
+## Text-Based Game State Diagram
+
+```
+[Landing]
+   |
+   |--(Demo Player)--> [Demo Quest 1]
+   |
+   |--(Logged-In Player)--> [Quest 1]
+
+[Quest 1]
+   |--(Success)--> [Rewards] --> [Skill Tree Intro] --> [Skill Purchase Gate] --> [Quest 2]
+   |--(Crash)----> [Server Crashed] --> [Retry Quest 1]
+
+[Quest N]
+   |--(Success)--> [Rewards] --> [Unlock Quest N+1]
+   |--(Crash)----> [Server Crashed] --> [Retry Quest N]
+
+[Quest Completed]
+   |--(Open)--> [Read-Only Review]
+```
+
+## Quest Lifecycle
+
+**Start** → **Onboarding Dialogs** → **Play** → **Validate** → **Success/Crash** → **Transition**
+
+### Start
+
+- Player spawns directly into Quest 1.
+- No menus visible.
+
+### Onboarding Dialogs (Quest 1 only)
+
+Floating dialogs pause gameplay and appear contextually:
+
+1. Code editor basics
+2. Bug exists in the code
+3. Server Health drain and pressure
+4. Success vs Crash
+
+Dialogs are shown once and never again.
+
+### Play
+
+- Buggy code + validation runner
+- Server Health drains over time
+
+### Success
+
+- Grant Bytes / Focus / Commits immediately
+- Reward animation
+- Mark Quest as COMPLETED
+- Lock Quest from replay
+
+### Failure
+
+- Server Health reaches 0 → **SERVER CRASHED**
+- Quest stays ACTIVE; Player can retry
+
+## Completed Quest Rules (Read-Only)
+
+- Visually marked **COMPLETED**
+- Opens in **read-only**
+- Final corrected code shown
+- Disabled: editing, running, Server Health, rewards
+- Tooltip: “This quest has already been resolved. You may review it, but not modify it.”
+
+## Skill Tree Interaction Flow
+
+After first Quest success:
+
+- Skill Tree auto-opens
+- Floating dialog explains:
+  - What Skills are
+  - Currency costs
+  - Active vs passive effects
+- Player must purchase at least one Skill to proceed
+- Skill effects apply immediately and persist
+- Skills are permanent; no resets
+
+## Skill Effects in Gameplay
+
+Skills can:
+
+- Modify Server Health drain
+- Unlock actions (undo, hints, dry run)
+- Reduce penalties
+- Modify challenge constraints
+
+## Quest Progression
+
+- After Skill purchase, unlock next Quest
+- Difficulty increases gradually
+- New bug tiers unlock over time
+- After ~3 Quests, introduce cosmetic currency (Gold)
+
+## Cosmetic Shop Introduction
+
+On first Gold earned:
+
+- Floating dialog introduces the Armory / Relic Vault
+- Cosmetics include Character Vessel skins, UI effects, editor themes
+- Cosmetics are visual only, no gameplay impact
+
+## Player States
+
+### Demo Player (Logged-Out)
+
+- Can play limited Quests
+- Can earn currency
+- Can buy Skills and Cosmetics
+- Progress is not saved
+- Must show dialog: progress resets on exit; full access requires login
+- Gameplay rules identical to full game
+
+### Logged-In Player
+
+- Full access to all systems
+- Progress is saved
+- No advantages over Demo beyond persistence
+
+## UI States & Transitions
+
+1. **Landing** → Demo or Login
+2. **Quest 1** (no menus) → Onboarding dialogs → Play
+3. **Server Crashed** → Retry Quest
+4. **Quest Success** → Reward animation
+5. **Skill Tree Intro** → Skill Purchase Gate
+6. **Quest 2+** → Normal loop
+7. **Completed Quest Review** (read-only)
+8. **Armory Intro** on first Gold
+
+## Strict Rules
+
+- No replaying Quests for rewards
+- No editing completed Quests
+- No skipping Skill Tree introduction
+- No direct access to locked Quests
+- No traditional level select UI
+- All onboarding via floating dialogs only
+
+## Goal
+
+Progression feels earned. Power is visible. Learning is accidental.PHASE 0: Project Initialization
 
 0.1 Repository & Tooling
 • Set up:

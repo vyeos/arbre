@@ -1,4 +1,113 @@
-# Tasks
+# Gameplay Flow Implementation Tasks
+
+## Phase A — Core State Model
+
+- [ ] Define Quest state enum: ACTIVE / COMPLETED / LOCKED / SKIPPED
+- [ ] Persist Quest state per Player (demo uses in-memory)
+- [ ] Enforce: only ACTIVE Quests are playable
+- [ ] Enforce: COMPLETED Quests are read-only
+- [ ] Enforce: LOCKED Quests are inaccessible
+- [ ] Enforce: SKIPPED Quests are visible and queued for return
+
+## Phase B — Initial State & Quest 1 Drop
+
+- [ ] Spawn new Player directly into Quest 1
+- [ ] Hide menus at start of Quest 1
+- [ ] Ensure all currencies start at 0
+- [ ] Ensure no Skills unlocked at start
+
+## Phase C — Onboarding Dialogs (Quest 1)
+
+- [ ] Floating dialog: editor basics
+- [ ] Floating dialog: bug exists in code
+- [ ] Floating dialog: Server Health drain
+- [ ] Floating dialog: success vs crash
+- [ ] Dialogs pause gameplay
+- [ ] Dialogs are shown only once
+- [ ] No static tutorial pages
+
+## Phase D — Quest Mechanics
+
+- [ ] Server Health drains over time
+- [ ] Validate code for success
+- [ ] Crash when Server Health hits 0
+- [ ] Show SERVER CRASHED state
+- [ ] Allow retry only on ACTIVE Quests
+
+## Phase E — Rewards & Completion
+
+- [ ] Award Bytes / Focus / Commits on success
+- [ ] Show reward animation
+- [ ] Mark Quest as COMPLETED
+- [ ] Lock Quest from replay
+
+## Phase F — Completed Quest Review
+
+- [ ] Display COMPLETED badge
+- [ ] Read-only editor
+- [ ] Show final corrected code
+- [ ] Disable run/submit
+- [ ] Disable Server Health
+- [ ] Show tooltip: “This quest has already been resolved. You may review it, but not modify it.”
+
+## Phase G — Skill Tree Introduction Gate
+
+- [ ] Auto-open Skill Tree after first Quest success
+- [ ] Floating dialog: Skills, costs, active vs passive
+- [ ] Require at least one Skill purchase to proceed
+- [ ] Apply Skill effects immediately
+- [ ] Prevent Skill resets
+
+## Phase H — Skill Effects in Gameplay
+
+- [ ] Apply Server Health drain modifiers
+- [ ] Unlock actions (undo, hints, dry run)
+- [ ] Reduce penalties
+- [ ] Modify challenge constraints
+
+## Phase I — Quest Progression
+
+- [ ] Unlock next Quest after Skill purchase
+- [ ] Gradually increase difficulty
+- [ ] Unlock new bug tiers over time
+- [ ] Introduce Gold after ~3 Quests
+
+## Phase J — Cosmetic Introduction
+
+- [ ] On first Gold earned, show Armory intro dialog
+- [ ] Cosmetic catalog: Vessel skins, UI effects, editor themes
+- [ ] Cosmetics are visual only (no gameplay impact)
+
+## Phase K — Skip Quest System
+
+- [ ] Add Skip Quest button (ACTIVE only)
+- [ ] Spend Bytes to skip (configurable cost)
+- [ ] Mark Quest as SKIPPED
+- [ ] Advance to next Quest immediately
+- [ ] Re-queue skipped Quest after next Quest is cleared
+- [ ] Prevent SKIPPED from counting as COMPLETED
+- [ ] Show SKIPPED badge in Quest selector
+- [ ] Tooltip: “Skipped Quests must be cleared later.”
+
+## Phase L — Demo Player vs Logged-In Player
+
+- [ ] Demo Player: limited Quest count
+- [ ] Demo Player: can earn currency
+- [ ] Demo Player: can buy Skills and Cosmetics
+- [ ] Demo Player: progress resets on exit
+- [ ] Show dialog: persistence requires login
+- [ ] Logged-In Player: full access, same rules, saved progress
+
+## Phase M — UI State Transitions
+
+- [ ] Landing → Demo or Login
+- [ ] Quest 1 → Onboarding dialogs → Play
+- [ ] Crash → Retry same Quest
+- [ ] Success → Rewards → Skill Tree Gate
+- [ ] Skill purchase → Unlock Quest 2
+- [ ] Completed Quest → Read-only review
+- [ ] Skipped Quest → Marked and queued for return
+- [ ] First Gold → Armory intro
 
 ## Phase 0 — Project Initialization
 
