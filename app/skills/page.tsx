@@ -75,7 +75,7 @@ const SkillNode = ({
     }`}
   >
     <div className="font-semibold">{data.label}</div>
-    <div className="text-[10px] text-muted-foreground">Cost: {data.price} Gold</div>
+    <div className="text-[10px] text-muted-foreground">Cost: {data.price} Bytes</div>
     <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg border border-border bg-background/90 px-3 py-2 text-[11px] text-muted-foreground opacity-0 shadow-lg transition group-hover:opacity-100">
       {data.description || "No Codex entry yet."}
     </div>
@@ -85,7 +85,7 @@ const SkillNode = ({
 export default function SkillsPage() {
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [unlocks, setUnlocks] = useState<UnlockEntry[]>([]);
-  const [gold, setGold] = useState(0);
+  const [bytes, setBytes] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -102,10 +102,10 @@ export default function SkillsPage() {
       if (unlocksRes.ok) {
         const unlocksPayload = (await unlocksRes.json()) as ApiResponse<{
           unlocks: UnlockEntry[];
-          gold: number;
+          bytes: number;
         }>;
         setUnlocks(unlocksPayload.data?.unlocks ?? []);
-        setGold(unlocksPayload.data?.gold ?? 0);
+        setBytes(unlocksPayload.data?.bytes ?? 0);
       }
     };
 
@@ -152,7 +152,7 @@ export default function SkillsPage() {
       if (skill.id === rootSkill.id) {
         const price = getSkillPrice(skill);
         const owned = unlockedIds.has(skill.id);
-        const canBuy = !owned && gold >= price;
+        const canBuy = !owned && bytes >= price;
         return {
           id: skill.id,
           position: { x: 0, y: 0 },
@@ -182,7 +182,7 @@ export default function SkillsPage() {
       const price = getSkillPrice(skill);
       const owned = unlockedIds.has(skill.id);
       const isLocked = !owned;
-      const canBuy = isVisible && !owned && gold >= price;
+      const canBuy = isVisible && !owned && bytes >= price;
 
       return {
         id: skill.id,
@@ -225,7 +225,7 @@ export default function SkillsPage() {
     }
 
     return { nodes: graphNodes, edges: graphEdges, canBuyById: buyMap };
-  }, [skills, unlocks, gold]);
+  }, [skills, unlocks, bytes]);
 
   const handleBuy = async (id: string) => {
     if (!canBuyById.get(id)) return;
@@ -238,7 +238,7 @@ export default function SkillsPage() {
     const payload = (await response.json()) as ApiResponse<{
       id: string;
       tier: number;
-      remainingGold: number;
+      remainingBytes: number;
     }>;
     if (payload.error) return;
     setUnlocks((prev) => {
@@ -250,10 +250,10 @@ export default function SkillsPage() {
       }
       return [...prev, { id, tier: payload.data?.tier ?? 1 }];
     });
-    if (payload.data?.remainingGold !== undefined) {
-      setGold(payload.data.remainingGold);
+    if (payload.data?.remainingBytes !== undefined) {
+      setBytes(payload.data.remainingBytes);
       window.dispatchEvent(
-        new CustomEvent("wallet:update", { detail: { gold: payload.data.remainingGold } }),
+        new CustomEvent("wallet:update", { detail: { bytes: payload.data.remainingBytes } }),
       );
     }
   };

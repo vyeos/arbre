@@ -506,7 +506,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
 
       const [progress] = await db
         .select({
-          gold: schema.currencies.gold,
+          bytes: schema.currencies.bytes,
         })
         .from(schema.currencies)
         .where(eq(schema.currencies.userId, user.id))
@@ -514,7 +514,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
 
       return {
         data: {
-          gold: progress?.gold ?? 0,
+          bytes: progress?.bytes ?? 0,
           unlocks,
           effects: applySkillEffects(unlocks),
         },
@@ -525,7 +525,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
       response: {
         200: ApiSuccess(
           t.Object({
-            gold: t.Number(),
+            bytes: t.Number(),
             unlocks: t.Array(SkillUnlockEntry),
             effects: SkillEffectsSummary,
           }),
@@ -587,7 +587,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
             .where(eq(schema.skillUnlocks.userId, user.id));
           const [wallet] = await tx
             .select({
-              gold: schema.currencies.gold,
+              bytes: schema.currencies.bytes,
             })
             .from(schema.currencies)
             .where(eq(schema.currencies.userId, user.id))
@@ -618,21 +618,24 @@ export const app = new Elysia({ prefix: "/api/elysia" })
             nextTier,
           );
 
-          const availableGold = wallet?.gold ?? 0;
-          if (availableGold < cost) {
-            throw new Error("INSUFFICIENT_GOLD");
+          const availableBytes = wallet?.bytes ?? 0;
+          if (availableBytes < cost) {
+            throw new Error("INSUFFICIENT_BYTES");
           }
 
           const spend = await tx
             .update(schema.currencies)
-            .set({ gold: sql`${schema.currencies.gold} - ${cost}` })
+            .set({ bytes: sql`${schema.currencies.bytes} - ${cost}` })
             .where(
-              and(eq(schema.currencies.userId, user.id), sql`${schema.currencies.gold} >= ${cost}`),
+              and(
+                eq(schema.currencies.userId, user.id),
+                sql`${schema.currencies.bytes} >= ${cost}`,
+              ),
             )
-            .returning({ gold: schema.currencies.gold });
+            .returning({ bytes: schema.currencies.bytes });
 
           if (!spend.length) {
-            throw new Error("INSUFFICIENT_GOLD");
+            throw new Error("INSUFFICIENT_BYTES");
           }
 
           if (currentTier > 0) {
@@ -672,7 +675,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
 
           return {
             tier: nextTier,
-            remainingGold: spend[0]?.gold ?? 0,
+            remainingBytes: spend[0]?.bytes ?? 0,
           };
         });
 
@@ -680,20 +683,20 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           data: {
             id: skill.id,
             tier: result.tier,
-            remainingGold: result.remainingGold,
+            remainingBytes: result.remainingBytes,
           },
           error: null,
         };
       } catch (error) {
         const reason = error instanceof Error ? error.message : "LOCKED";
 
-        if (reason === "INSUFFICIENT_GOLD") {
+        if (reason === "INSUFFICIENT_BYTES") {
           set.status = 409;
           return {
             data: null,
             error: {
               code: "LOCKED",
-              message: "Not enough Gold.",
+              message: "Not enough Bytes.",
             },
           };
         }
@@ -732,7 +735,7 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           t.Object({
             id: t.String(),
             tier: t.Number(),
-            remainingGold: t.Number(),
+            remainingBytes: t.Number(),
           }),
         ),
         401: ApiFailure,
