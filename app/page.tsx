@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import Footer from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,39 @@ const highlights = [
   {
     title: "Armory",
     description: "Acquire Relics, bind them to your Avatar, and let your victories show.",
+  },
+];
+
+const realmStats = [
+  {
+    label: "Quests Forged",
+    value: "120+",
+    detail: "Curated Quest encounters",
+  },
+  {
+    label: "Skill Branches",
+    value: "8",
+    detail: "Build-defining paths",
+  },
+  {
+    label: "Relic Slots",
+    value: "9",
+    detail: "Avatar prestige layers",
+  },
+];
+
+const journeySteps = [
+  {
+    title: "Enter the Quest Arena",
+    description: "Patch the bug, survive the drain, claim your rewards.",
+  },
+  {
+    title: "Bind Skills",
+    description: "Spend Bytes to unlock passive buffs and active actions.",
+  },
+  {
+    title: "Claim Relics",
+    description: "Acquire cosmetics in the Armory to show your victories.",
   },
 ];
 
@@ -40,7 +74,7 @@ export default function Page() {
           <div className="space-y-6">
             <Badge variant="outline" className="inline-flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-primary"></span>
-              Forging the next generation of learning RPGs
+              Forge your mind. Earn your power.
             </Badge>
             <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
               Master the debug battlefield and evolve your Avatar.
@@ -59,6 +93,17 @@ export default function Page() {
               <Button asChild variant="outline">
                 <Link href="/login">Enter the Gate</Link>
               </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {realmStats.map((stat) => (
+                <Card key={stat.label} className="bg-background/70">
+                  <CardHeader className="py-4">
+                    <CardDescription>{stat.label}</CardDescription>
+                    <CardTitle className="text-2xl">{stat.value}</CardTitle>
+                    <CardDescription className="text-xs">{stat.detail}</CardDescription>
+                  </CardHeader>
+                </Card>
+              ))}
             </div>
           </div>
 
@@ -99,6 +144,38 @@ export default function Page() {
               </CardHeader>
             </Card>
           ))}
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[0.55fr_1fr]">
+          <Card className="bg-card/80 shadow-xl">
+            <CardHeader>
+              <Badge variant="outline" className="w-fit">
+                Quest Flow
+              </Badge>
+              <CardTitle className="text-2xl">Your ascent, step by step.</CardTitle>
+              <CardDescription>
+                No menus at the start. One Quest, one outcome, one climb.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>Each Quest is either ACTIVE, COMPLETED, LOCKED, or SKIPPED.</p>
+              <p>Complete a Quest to unlock the next. Skipped Quests return later.</p>
+              <p>Rewards trigger instantly. No replay farming, ever.</p>
+            </CardContent>
+          </Card>
+          <div className="grid gap-3">
+            {journeySteps.map((step, index) => (
+              <Card key={step.title} className="bg-background/70">
+                <CardHeader className="py-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Step {index + 1}
+                  </p>
+                  <CardTitle className="text-lg">{step.title}</CardTitle>
+                  <CardDescription>{step.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
         </section>
 
         <section className="rounded-3xl border border-border bg-card/80 p-8 shadow-2xl">
@@ -181,6 +258,7 @@ export default function Page() {
           </CardContent>
         </Card>
       </main>
+      <Footer />
     </div>
   );
 }
