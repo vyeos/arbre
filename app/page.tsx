@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 const highlights = [
   {
     title: "Quest Encounters",
@@ -34,10 +38,10 @@ export default function Page() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-16">
         <section className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-4 py-1 text-xs text-muted-foreground">
+            <Badge variant="outline" className="inline-flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-primary"></span>
               Forging the next generation of learning RPGs
-            </div>
+            </Badge>
             <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
               Master the debug battlefield and evolve your Character Vessel.
             </h1>
@@ -46,59 +50,56 @@ export default function Page() {
               and acquire Relics in the Armory — all while proving mastery under pressure.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/play"
-                className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-              >
-                Enter the Quest Arena
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-              >
-                Forge Character Vessel
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-lg border border-border bg-card/70 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-card"
-              >
-                Enter the Gate
-              </Link>
+              <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-500">
+                <Link href="/play">Enter the Quest Arena</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Forge Character Vessel</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/login">Enter the Gate</Link>
+              </Button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card/80 p-6 shadow-2xl">
-            <div className="space-y-4">
+          <Card className="bg-card/80 shadow-2xl">
+            <CardHeader>
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Character Vessel Blueprint
               </p>
-              <div className="grid gap-3 text-sm">
-                <div className="rounded-lg border border-border bg-background/70 px-4 py-3">
-                  <p className="text-muted-foreground">Base Vessel</p>
-                  <p className="font-semibold">Body • Skin • Hair • Eye Style</p>
-                </div>
-                <div className="rounded-lg border border-border bg-background/70 px-4 py-3">
-                  <p className="text-muted-foreground">Prestige Layer</p>
-                  <p className="font-semibold">Relics bound per slot, no stat boosts</p>
-                </div>
-                <div className="rounded-lg border border-border bg-background/70 px-4 py-3">
-                  <p className="text-muted-foreground">Gold Economy</p>
-                  <p className="font-semibold">Earned only through Quests and bosses</p>
-                </div>
-              </div>
-            </div>
-          </div>
+              <CardDescription>Mastery displays your growth and prestige.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 text-sm">
+              <Card className="bg-background/70">
+                <CardHeader className="py-3">
+                  <CardDescription>Base Vessel</CardDescription>
+                  <CardTitle className="text-sm">Body • Skin • Hair • Eye Style</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card className="bg-background/70">
+                <CardHeader className="py-3">
+                  <CardDescription>Prestige Layer</CardDescription>
+                  <CardTitle className="text-sm">Relics bound per slot, no stat boosts</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card className="bg-background/70">
+                <CardHeader className="py-3">
+                  <CardDescription>Gold Economy</CardDescription>
+                  <CardTitle className="text-sm">Earned only through Quests and bosses</CardTitle>
+                </CardHeader>
+              </Card>
+            </CardContent>
+          </Card>
         </section>
 
         <section className="grid gap-6 md:grid-cols-3">
           {highlights.map((highlight) => (
-            <div
-              key={highlight.title}
-              className="rounded-2xl border border-border bg-card/80 p-6 shadow-lg"
-            >
-              <h2 className="text-lg font-semibold">{highlight.title}</h2>
-              <p className="mt-3 text-sm text-muted-foreground">{highlight.description}</p>
-            </div>
+            <Card key={highlight.title} className="bg-card/80 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">{highlight.title}</CardTitle>
+                <CardDescription>{highlight.description}</CardDescription>
+              </CardHeader>
+            </Card>
           ))}
         </section>
 
@@ -114,79 +115,73 @@ export default function Page() {
                 grants XP, Skill Points, and the power to shape your build.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/play"
-                  className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-                >
-                  Enter the Quest Arena
-                </Link>
-                <Link
-                  href="/play"
-                  className="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-                >
-                  Chapter I: Quest Arena
-                </Link>
-                <Link
-                  href="/skills"
-                  className="rounded-lg border border-border bg-card/70 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-card"
-                >
-                  Chapter II: Skill Tree
-                </Link>
+                <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-500">
+                  <Link href="/play">Enter the Quest Arena</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/play">Chapter I: Quest Arena</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/skills">Chapter II: Skill Tree</Link>
+                </Button>
               </div>
             </div>
             <div className="grid gap-3 text-sm">
-              <div className="rounded-2xl border border-border bg-background/70 px-5 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Chapter I
-                </p>
-                <h3 className="mt-2 text-lg font-semibold">Enter the Quest Arena</h3>
-                <p className="mt-2 text-muted-foreground">
-                  Clear live encounters, earn Gold, and sharpen your combo streak.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-background/70 px-5 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Chapter II
-                </p>
-                <h3 className="mt-2 text-lg font-semibold">Bind Skills</h3>
-                <p className="mt-2 text-muted-foreground">
-                  Spend Skill Points in the Skill Tree to shape your build.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-background/70 px-5 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Chapter III
-                </p>
-                <h3 className="mt-2 text-lg font-semibold">Claim Relics</h3>
-                <p className="mt-2 text-muted-foreground">
-                  Visit the Relic Vault to acquire cosmetics and show your victories.
-                </p>
-              </div>
+              <Card className="bg-background/70">
+                <CardHeader className="py-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Chapter I
+                  </p>
+                  <CardTitle className="text-lg">Enter the Quest Arena</CardTitle>
+                  <CardDescription>
+                    Clear live encounters, earn Gold, and sharpen your combo streak.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card className="bg-background/70">
+                <CardHeader className="py-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Chapter II
+                  </p>
+                  <CardTitle className="text-lg">Bind Skills</CardTitle>
+                  <CardDescription>
+                    Spend Skill Points in the Skill Tree to shape your build.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              <Card className="bg-background/70">
+                <CardHeader className="py-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Chapter III
+                  </p>
+                  <CardTitle className="text-lg">Claim Relics</CardTitle>
+                  <CardDescription>
+                    Visit the Relic Vault to acquire cosmetics and show your victories.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
             </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border bg-card/80 p-8 shadow-xl">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <Card className="bg-card/80 p-8 shadow-xl">
+          <CardContent className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3">
-              <h2 className="text-2xl font-semibold">Armory-ready Relic slots</h2>
-              <p className="text-sm text-muted-foreground">
+              <CardTitle className="text-2xl">Armory-ready Relic slots</CardTitle>
+              <CardDescription>
                 Bind one Relic per slot. Sealed Relics reveal their unlock conditions upfront so
                 Players always know the next milestone.
-              </p>
+              </CardDescription>
             </div>
             <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
               {relicSlots.map((slot) => (
-                <div
-                  key={slot}
-                  className="rounded-full border border-border bg-background/70 px-3 py-1 text-center"
-                >
+                <Badge key={slot} variant="outline" className="justify-center">
                   {slot}
-                </div>
+                </Badge>
               ))}
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
