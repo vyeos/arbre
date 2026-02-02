@@ -50,6 +50,8 @@ const logSeeds = [
 const stripJsExports = (source: string) =>
   source.replace(/\bexport\s+(?=(function|const|let|class)\b)/g, "");
 
+type QuestState = "ACTIVE" | "COMPLETED" | "LOCKED" | "SKIPPED";
+
 type LogEntry = {
   id: number;
   message: string;
@@ -94,6 +96,7 @@ const demoQuestRunners: Record<
 };
 
 export default function DemoGameplay() {
+  const questOrder = useMemo(() => demoQuests.map((item) => item.id), []);
   const [questId, setQuestId] = useState(demoQuests[0].id);
   const quest = useMemo(() => demoQuests.find((item) => item.id === questId)!, [questId]);
   const [code, setCode] = useState(demoQuests[0].starterCode);
@@ -102,23 +105,65 @@ export default function DemoGameplay() {
   ]);
   const logCounter = useRef(1);
 
-  const [bytes, setBytes] = useState(40);
-  const [skippedQuestIds, setSkippedQuestIds] = useState<string[]>([]);
+  const [bytes, setBytes] = useState(0);
+  const [focus, setFocus] = useState(0);
+  const [commits, setCommits] = useState(0);
+  const [gold, setGold] = useState(0);
+  const [questStates, setQuestStates] = useState<Record<string, QuestState>>(() => {
+    const initial: Record<string, QuestState> = {};
+    demoQuests.forEach((item, index) => {
+      initial[item.id] = index === 0 ? "ACTIVE" : "LOCKED";
+    });
+    return initial;
+  });
+  const [skipQueue, setSkipQueue] = useState<string[]>([]);
+  const [finalCodeByQuest, setFinalCodeByQuest] = useState<Record<string, string>>({});
   const skipCost = 15;
+  const skillGateCost = 10;
+  const [demoSkillPurchased, setDemoSkillPurchased] = useState(false);
+  const [skillGateActive, setSkillGateActive] = useState(false);
+  const [armoryIntroActive, setArmoryIntroActive] = useState(false);
+  const [rewardBanner, setRewardBanner] = useState<{
+    bytes: number;
+    focus: number;
+    commits: number;
+    gold: number;
+  } | null>(null);
+
+  const onboardingSteps = [
+    {
+      title: "The Editor",
+      body: "This is your forge. Edit the runes to repair the quest code.",
+    },
+    {
+      title: "The Bug",
+      body: "The script is cursed. Find the error and restore the logic.",
+    },
+    {
+      title: "Server Health",
+      body: "Stability drains over time. Act before the core collapses.",
+    },
+    {
+      title: "Victory or Crash",
+      body: "Fix the code to clear the quest. Fail, and the server crashes.",
+    },
+  ];
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingSeen, setOnboardingSeen] = useState(false);
 
   const [isRunning, setIsRunning] = useState(false);
 
-  const drainModifiers = useMemo<DrainModifier[]>(
-    () => [
+  const drainModifiers = useMemo<DrainModifier[]>(() => {
+    if (!demoSkillPurchased) return [];
+    return [
       {
         id: "focus-flow",
         label: "Focus Flow",
-        multiplier: 0.9,
+        multiplier: 0.85,
         reason: "Passive focus aura",
       },
-    ],
-    [],
-  );
+    ];
+  }, [demoSkillPurchased]);
 
   const appendLog = useCallback((message: string, tone: LogEntry["tone"] = "neutral") => {
     logCounter.current += 1;
@@ -126,8 +171,14 @@ export default function DemoGameplay() {
     setLogs((current) => [{ id, message, tone }, ...current].slice(0, 8));
   }, []);
 
+  const questState = questStates[questId] ?? "LOCKED";
+  const onboardingActive = questId === demoQuests[0].id && !onboardingSeen;
+  const dialogActive = onboardingActive && onboardingStep < onboardingSteps.length;
+  const isPlayable = questState === "ACTIVE" && !dialogActive && !skillGateActive;
+  const isReadOnly = questState === "COMPLETED";
+
   const { health, status, crashed, resetHealth, applyDamage } = useServerHealth({
-    baseDrain: quest.serverHealthDrainRate,
+    baseDrain: isPlayable ? quest.serverHealthDrainRate : 0,
     modifiers: drainModifiers,
     onCrash: () => appendLog("The system destabilized. Core crashed.", "danger"),
   });
@@ -135,27 +186,49 @@ export default function DemoGameplay() {
   const resetQuestState = (nextQuestId: string) => {
     const nextQuest = demoQuests.find((item) => item.id === nextQuestId);
     if (!nextQuest) return;
+    const nextState = questStates[nextQuestId] ?? "LOCKED";
+    if (nextState === "LOCKED" || nextState === "SKIPPED") return;
     setQuestId(nextQuestId);
-    setCode(nextQuest.starterCode);
+    const finalCode = finalCodeByQuest[nextQuestId];
+    setCode(finalCode ?? nextQuest.starterCode);
     setLogs([{ id: 1, message: "Quest chamber sealed. Awaiting Player action.", tone: "neutral" }]);
     resetHealth();
   };
 
-  const handleSkip = () => {
-    if (crashed || isRunning) return;
-    if (bytes < skipCost) {
-      appendLog("Not enough Bytes to bend fate.", "danger");
-      return;
+  const showRewards = (reward: { bytes: number; focus: number; commits: number; gold: number }) => {
+    setRewardBanner(reward);
+    window.setTimeout(() => setRewardBanner(null), 2200);
+  };
+
+  const getNextQuestId = (currentId: string) => {
+    const index = questOrder.indexOf(currentId);
+    if (index === -1) return null;
+    return questOrder[index + 1] ?? null;
+  };
+
+  const unlockAfterSuccess = (currentId: string) => {
+    const nextSkipped = skipQueue[0];
+    if (nextSkipped) {
+      setSkipQueue((prev) => prev.slice(1));
     }
 
-    const currentIndex = demoQuests.findIndex((item) => item.id === questId);
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % demoQuests.length;
-    const nextQuest = demoQuests[nextIndex];
+    setQuestStates((prev) => {
+      const updated = { ...prev, [currentId]: "COMPLETED" as QuestState };
 
-    setBytes((prev) => prev - skipCost);
-    setSkippedQuestIds((prev) => (prev.includes(questId) ? prev : [...prev, questId]));
-    appendLog("Fate bent. Quest skipped; the seal remains.", "neutral");
-    resetQuestState(nextQuest.id);
+      if (nextSkipped) {
+        Object.keys(updated).forEach((id) => {
+          if (updated[id] === "ACTIVE") updated[id] = "LOCKED";
+        });
+        updated[nextSkipped] = "ACTIVE";
+        return updated;
+      }
+
+      const nextId = getNextQuestId(currentId);
+      if (nextId && updated[nextId] === "LOCKED") {
+        updated[nextId] = "ACTIVE";
+      }
+      return updated;
+    });
   };
 
   const statusLabel =
@@ -168,7 +241,7 @@ export default function DemoGameplay() {
           : "Stable";
 
   const handleRun = async () => {
-    if (crashed || isRunning) return;
+    if (crashed || isRunning || !isPlayable) return;
     setIsRunning(true);
     appendLog("Channeling runes...", "neutral");
 
@@ -240,7 +313,7 @@ export default function DemoGameplay() {
   };
 
   const handleSubmit = async () => {
-    if (crashed || isRunning) return;
+    if (crashed || isRunning || !isPlayable) return;
     setIsRunning(true);
     appendLog("Submitting fix to the Tribunal...", "neutral");
 
@@ -282,6 +355,29 @@ export default function DemoGameplay() {
 
       if (runStatus === "passed") {
         appendLog("Quest Cleared! Rewards stored in the Armory.", "success");
+        const questIndex = questOrder.indexOf(questId);
+        const reward = {
+          bytes: 12 + questIndex * 4,
+          focus: 4 + questIndex * 2,
+          commits: 3 + questIndex,
+          gold: questIndex >= 2 ? 5 : 0,
+        };
+        setBytes((prev) => prev + reward.bytes);
+        setFocus((prev) => prev + reward.focus);
+        setCommits((prev) => prev + reward.commits);
+        setGold((prev) => prev + reward.gold);
+        showRewards(reward);
+        setFinalCodeByQuest((prev) => ({ ...prev, [questId]: code }));
+
+        if (questId === demoQuests[0].id && !demoSkillPurchased) {
+          setSkillGateActive(true);
+        } else {
+          unlockAfterSuccess(questId);
+        }
+
+        if (reward.gold > 0 && gold === 0) {
+          setArmoryIntroActive(true);
+        }
       } else {
         appendLog("You took damage. The Tribunal demands more precision.", "danger");
         applyDamage(15);
@@ -299,9 +395,129 @@ export default function DemoGameplay() {
     appendLog("Stability restored. Core rebooted.", "success");
   };
 
+  const handleSkip = () => {
+    if (crashed || isRunning || !isPlayable) return;
+    if (bytes < skipCost) {
+      appendLog("Not enough Bytes to bend fate.", "danger");
+      return;
+    }
+
+    const nextId = getNextQuestId(questId);
+    if (!nextId) return;
+
+    setBytes((prev) => prev - skipCost);
+    setQuestStates((prev) => ({
+      ...prev,
+      [questId]: "SKIPPED",
+      [nextId]: prev[nextId] === "LOCKED" ? "ACTIVE" : prev[nextId],
+    }));
+    setSkipQueue((prev) => (prev.includes(questId) ? prev : [...prev, questId]));
+    appendLog("Fate bent. Quest skipped; the seal remains.", "neutral");
+    resetQuestState(nextId);
+  };
+
+  const handleSkillGatePurchase = () => {
+    if (bytes < skillGateCost) {
+      appendLog("Not enough Bytes to bind your first Skill.", "danger");
+      return;
+    }
+    setBytes((prev) => prev - skillGateCost);
+    setDemoSkillPurchased(true);
+    setSkillGateActive(false);
+    unlockAfterSuccess(demoQuests[0].id);
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
-      <section className="rounded-2xl border border-border bg-card/80 p-6 shadow-xl">
+      <section className="relative rounded-2xl border border-border bg-card/80 p-6 shadow-xl">
+        {dialogActive ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-6">
+            <div className="max-w-md rounded-2xl border border-border bg-background/95 p-6 text-sm text-foreground shadow-xl">
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                First Quest Briefing
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">
+                {onboardingSteps[onboardingStep]?.title}
+              </h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {onboardingSteps[onboardingStep]?.body}
+              </p>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Step {onboardingStep + 1} / {onboardingSteps.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextStep = onboardingStep + 1;
+                    if (nextStep >= onboardingSteps.length) {
+                      setOnboardingSeen(true);
+                      setOnboardingStep(0);
+                    } else {
+                      setOnboardingStep(nextStep);
+                    }
+                  }}
+                  className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                >
+                  {onboardingStep + 1 >= onboardingSteps.length ? "Enter the Quest" : "Next"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {skillGateActive ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-6">
+            <div className="max-w-md rounded-2xl border border-border bg-background/95 p-6 text-sm text-foreground shadow-xl">
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                Skill Tree Unlocked
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">Bind Your First Skill</h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Skills reshape your power. Spend Bytes to bind a Skill and open the next Quest.
+              </p>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Cost: {skillGateCost} Bytes</span>
+                <button
+                  type="button"
+                  onClick={handleSkillGatePurchase}
+                  disabled={bytes < skillGateCost}
+                  className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Bind Skill
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {armoryIntroActive ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-6">
+            <div className="max-w-md rounded-2xl border border-border bg-background/95 p-6 text-sm text-foreground shadow-xl">
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                Armory Unsealed
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">Cosmetic Relics Awakened</h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                You earned Gold. The Armory now offers purely cosmetic relics — style, no power.
+              </p>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setArmoryIntroActive(false)}
+                  className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                >
+                  Enter the Armory
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {rewardBanner ? (
+          <div className="absolute inset-x-6 top-6 z-10 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200 shadow-lg">
+            <span className="font-semibold">Quest Rewards:</span> +{rewardBanner.bytes} Bytes, +
+            {rewardBanner.focus} Focus, +{rewardBanner.commits} Commits
+            {rewardBanner.gold ? `, +${rewardBanner.gold} Gold` : ""}
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Demo Quest</p>
@@ -310,54 +526,82 @@ export default function DemoGameplay() {
           </div>
           <div className="flex flex-col items-end gap-2">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Stability: {statusLabel}
+              {isReadOnly ? "Review Mode" : `Stability: ${statusLabel}`}
             </span>
-            <div className="h-2 w-48 overflow-hidden rounded-full border border-border bg-background">
-              <div
-                className={`h-full transition-all ${
-                  status === "critical"
-                    ? "bg-destructive"
-                    : status === "warning"
-                      ? "bg-amber-400"
-                      : "bg-primary"
-                }`}
-                style={{ width: `${health}%` }}
-              />
-            </div>
+            {isReadOnly ? null : (
+              <div className="h-2 w-48 overflow-hidden rounded-full border border-border bg-background">
+                <div
+                  className={`h-full transition-all ${
+                    status === "critical"
+                      ? "bg-destructive"
+                      : status === "warning"
+                        ? "bg-amber-400"
+                        : "bg-primary"
+                  }`}
+                  style={{ width: `${health}%` }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <label className="flex items-center gap-2">
-            Quest
-            <select
-              value={questId}
-              onChange={(event) => resetQuestState(event.target.value)}
-              className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-foreground"
+        {!dialogActive ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <label className="flex items-center gap-2">
+              Quest
+              <select
+                value={questId}
+                onChange={(event) => resetQuestState(event.target.value)}
+                className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-foreground"
+              >
+                {demoQuests.map((item) => {
+                  const state = questStates[item.id] ?? "LOCKED";
+                  const labelSuffix =
+                    state === "COMPLETED"
+                      ? " (Completed)"
+                      : state === "SKIPPED"
+                        ? " (Skipped)"
+                        : state === "LOCKED"
+                          ? " (Locked)"
+                          : "";
+                  return (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                      disabled={state === "LOCKED" || state === "SKIPPED"}
+                    >
+                      {item.title}
+                      {labelSuffix}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <div className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground">
+              Bytes: <span className="font-semibold text-foreground">{bytes}</span>
+            </div>
+            <div className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground">
+              Focus: <span className="font-semibold text-foreground">{focus}</span>
+            </div>
+            <div className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground">
+              Commits: <span className="font-semibold text-foreground">{commits}</span>
+            </div>
+            <div className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground">
+              Gold: <span className="font-semibold text-amber-300">{gold}</span>
+            </div>
+            <a
+              href={quest.codexLink}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:text-primary/80"
             >
-              {demoQuests.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title}
-                  {skippedQuestIds.includes(item.id) ? " (Skipped)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground">
-            Bytes: <span className="font-semibold text-foreground">{bytes}</span>
+              Open Codex Link
+            </a>
           </div>
-          <a
-            href={quest.codexLink}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary hover:text-primary/80"
-          >
-            Open Codex Link
-          </a>
-        </div>
+        ) : null}
 
         <div className="relative mt-4 overflow-hidden rounded-2xl border border-border">
-          {crashed ? (
+          {crashed && isPlayable ? (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/70 text-center">
               <p className="text-lg font-semibold text-destructive">SERVER CRASHED</p>
               <p className="text-xs text-muted-foreground">Recover in the next run, Player.</p>
@@ -382,16 +626,22 @@ export default function DemoGameplay() {
               minimap: { enabled: false },
               fontSize: 14,
               scrollBeyondLastLine: false,
-              readOnly: crashed,
+              readOnly: crashed || isReadOnly || dialogActive || skillGateActive,
             }}
           />
         </div>
+
+        {isReadOnly ? (
+          <div className="mt-3 rounded-xl border border-border bg-background/70 px-4 py-3 text-xs text-muted-foreground">
+            This quest has already been resolved. You may review it, but not modify it.
+          </div>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleRun}
-            disabled={isRunning || crashed}
+            disabled={isRunning || crashed || !isPlayable}
             className="rounded-lg border border-border bg-card/70 px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/70 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isRunning ? "Channeling..." : "Run"}
@@ -399,7 +649,7 @@ export default function DemoGameplay() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isRunning || crashed}
+            disabled={isRunning || crashed || !isPlayable}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Submit
@@ -407,7 +657,7 @@ export default function DemoGameplay() {
           <button
             type="button"
             onClick={handleSkip}
-            disabled={isRunning || crashed || bytes < skipCost}
+            disabled={isRunning || crashed || !isPlayable || bytes < skipCost}
             className="rounded-lg border border-amber-400/60 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Skip Quest ({skipCost} Bytes)
