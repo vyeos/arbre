@@ -1,22 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 
+import { usePlayerStore, playerStoreDefaults, type Wallet } from "@/lib/stores/player-store";
 import { cn } from "@/lib/utils";
-
-type Wallet = {
-  bytes: number;
-  focus: number;
-  commits: number;
-  gold: number;
-};
 
 type ApiResponse<T> = {
   data: T | null;
   error: { code: string; message: string } | null;
 };
-
-const emptyWallet: Wallet = { bytes: 0, focus: 0, commits: 0, gold: 0 };
 
 export default function CurrencyBadge({
   className,
@@ -25,36 +18,26 @@ export default function CurrencyBadge({
   className?: string;
   showOnMobile?: boolean;
 }) {
-  const [wallet, setWallet] = useState<Wallet>(emptyWallet);
+  const wallet = usePlayerStore((state) => state.wallet);
+  const setWallet = usePlayerStore((state) => state.setWallet);
+
+  const walletQuery = useQuery<Wallet>({
+    queryKey: ["economy", "wallet"],
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/economy/wallet");
+      const payload = (await response.json()) as ApiResponse<Wallet>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Wallet fetch failed");
+      }
+      return payload.data ?? playerStoreDefaults.emptyWallet;
+    },
+  });
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        const response = await fetch("/api/elysia/economy/wallet");
-        const payload = (await response.json()) as ApiResponse<Wallet>;
-        if (mounted && response.ok && !payload.error) {
-          setWallet(payload.data ?? emptyWallet);
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    void load();
-
-    const handleUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<Wallet>>).detail;
-      if (!detail) return;
-      setWallet((prev) => ({ ...prev, ...detail }));
-    };
-
-    window.addEventListener("wallet:update", handleUpdate);
-    return () => {
-      mounted = false;
-      window.removeEventListener("wallet:update", handleUpdate);
-    };
-  }, []);
+    if (walletQuery.data) {
+      setWallet(walletQuery.data);
+    }
+  }, [setWallet, walletQuery.data]);
 
   return (
     <div
