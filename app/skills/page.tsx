@@ -2,10 +2,12 @@
 
 import "reactflow/dist/style.css";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import type { Edge, Node, NodeProps } from "reactflow";
 import ReactFlow, { Background } from "reactflow";
 import { Badge } from "@/components/ui/badge";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePlayerStore } from "@/lib/stores/player-store";
 
 type ApiResponse<T> = {
   data: T | null;
@@ -114,34 +116,46 @@ const SkillNode = ({
 );
 
 export default function SkillsPage() {
-  const [skills, setSkills] = useState<SkillEntry[]>([]);
-  const [unlocks, setUnlocks] = useState<UnlockEntry[]>([]);
-  const [bytes, setBytes] = useState(0);
+  const queryClient = useQueryClient();
+  const wallet = usePlayerStore((state) => state.wallet);
+  const updateWallet = usePlayerStore((state) => state.updateWallet);
+
+  const skillsQuery = useQuery<SkillEntry[]>({
+    queryKey: ["skills", "list"],
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/skills");
+      const payload = (await response.json()) as ApiResponse<SkillEntry[]>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to load skills");
+      }
+      return payload.data ?? [];
+    },
+  });
+
+  const unlocksQuery = useQuery<{ unlocks: UnlockEntry[]; bytes: number }>({
+    queryKey: ["skills", "unlocks"],
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/skills/unlocks");
+      const payload = (await response.json()) as ApiResponse<{
+        unlocks: UnlockEntry[];
+        bytes: number;
+      }>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to load unlocks");
+      }
+      return payload.data ?? { unlocks: [], bytes: 0 };
+    },
+  });
 
   useEffect(() => {
-    const load = async () => {
-      const [skillsRes, unlocksRes] = await Promise.all([
-        fetch("/api/elysia/skills"),
-        fetch("/api/elysia/skills/unlocks"),
-      ]);
+    if (unlocksQuery.data) {
+      updateWallet({ bytes: unlocksQuery.data.bytes ?? 0 });
+    }
+  }, [unlocksQuery.data, updateWallet]);
 
-      const skillsPayload = (await skillsRes.json()) as ApiResponse<SkillEntry[]>;
-      if (skillsRes.ok && !skillsPayload.error) {
-        setSkills(skillsPayload.data ?? []);
-      }
-
-      if (unlocksRes.ok) {
-        const unlocksPayload = (await unlocksRes.json()) as ApiResponse<{
-          unlocks: UnlockEntry[];
-          bytes: number;
-        }>;
-        setUnlocks(unlocksPayload.data?.unlocks ?? []);
-        setBytes(unlocksPayload.data?.bytes ?? 0);
-      }
-    };
-
-    void load();
-  }, []);
+  const skills = useMemo(() => skillsQuery.data ?? [], [skillsQuery.data]);
+  const unlocks = useMemo(() => unlocksQuery.data?.unlocks ?? [], [unlocksQuery.data]);
+  const bytes = unlocksQuery.data?.bytes ?? wallet.bytes;
 
   const { nodes, edges, canBuyById } = useMemo(() => {
     if (!skills.length) {
@@ -264,35 +278,47 @@ export default function SkillsPage() {
     return { nodes: graphNodes, edges: graphEdges, canBuyById: buyMap };
   }, [skills, unlocks, bytes]);
 
-  const handleBuy = async (id: string) => {
-    if (!canBuyById.get(id)) return;
-    const response = await fetch("/api/elysia/skills/unlock", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (!response.ok) return;
-    const payload = (await response.json()) as ApiResponse<{
-      id: string;
-      tier: number;
-      remainingBytes: number;
-    }>;
-    if (payload.error) return;
-    setUnlocks((prev) => {
-      const existing = prev.find((item) => item.id === id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === id ? { ...item, tier: payload.data?.tier ?? item.tier } : item,
-        );
+  const unlockMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch("/api/elysia/skills/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const payload = (await response.json()) as ApiResponse<{
+        id: string;
+        tier: number;
+        remainingBytes: number;
+      }>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to bind skill");
       }
-      return [...prev, { id, tier: payload.data?.tier ?? 1 }];
-    });
-    if (payload.data?.remainingBytes !== undefined) {
-      setBytes(payload.data.remainingBytes);
-      window.dispatchEvent(
-        new CustomEvent("wallet:update", { detail: { bytes: payload.data.remainingBytes } }),
+      return payload.data;
+    },
+    onSuccess: (data, id) => {
+      if (!data) return;
+      queryClient.setQueryData(
+        ["skills", "unlocks"],
+        (prev: { unlocks: UnlockEntry[]; bytes: number } | undefined) => {
+          const current = prev ?? { unlocks: [], bytes: wallet.bytes };
+          const existing = current.unlocks.find((item) => item.id === id);
+          const updatedUnlocks = existing
+            ? current.unlocks.map((item) =>
+                item.id === id ? { ...item, tier: data.tier ?? item.tier } : item,
+              )
+            : [...current.unlocks, { id, tier: data.tier ?? 1 }];
+          return { unlocks: updatedUnlocks, bytes: data.remainingBytes ?? current.bytes };
+        },
       );
-    }
+      if (data.remainingBytes !== undefined) {
+        updateWallet({ bytes: data.remainingBytes });
+      }
+    },
+  });
+
+  const handleBuy = (id: string) => {
+    if (!canBuyById.get(id) || unlockMutation.isPending) return;
+    unlockMutation.mutate(id);
   };
 
   return (

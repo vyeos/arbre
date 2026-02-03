@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type CharacterVessel = {
   bodyType: string;
@@ -64,19 +65,52 @@ const outfitPalette: Record<string, string> = {
 };
 
 export default function CharacterOverview() {
-  const [vessel, setVessel] = useState<CharacterVessel | null>(null);
-  const [form, setForm] = useState(defaultVessel);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState<Partial<CharacterVessel>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
+  const vesselQuery = useQuery<CharacterVessel | null>({
+    queryKey: ["armory", "vessel"],
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/armory/inventory");
+      const payload = (await response.json()) as ApiResponse<ArmoryState>;
+      if (!response.ok || payload.error) {
+        if (response.status === 404 || payload.error?.code === "NOT_FOUND") {
+          return null;
+        }
+        throw new Error(payload.error?.message ?? "The system destabilized.");
+      }
+      return payload.data?.vessel ?? null;
+    },
+  });
+
+  const vessel = vesselQuery.data;
+  const baseForm = useMemo(
+    () =>
+      vessel
+        ? {
+            bodyType: vessel.bodyType,
+            skinTone: vessel.skinTone,
+            hairStyle: vessel.hairStyle,
+            hairColor: vessel.hairColor,
+            eyeStyle: vessel.eyeStyle ?? "None",
+          }
+        : defaultVessel,
+    [vessel],
+  );
+
+  const form = useMemo(() => ({ ...baseForm, ...draft }), [baseForm, draft]);
+
+  const normalizedForm = useMemo(() => ({ ...form, eyeStyle: form.eyeStyle ?? "None" }), [form]);
+
   const preview = useMemo(() => {
     return {
-      ...form,
-      eyeStyle: form.eyeStyle === "None" ? "None" : form.eyeStyle,
+      ...normalizedForm,
+      eyeStyle: normalizedForm.eyeStyle === "None" ? "None" : normalizedForm.eyeStyle,
     };
-  }, [form]);
+  }, [normalizedForm]);
 
   const pixelColors = useMemo(() => {
     const skin = skinPalette[preview.skinTone] ?? "#f6d7c1";
@@ -88,51 +122,10 @@ export default function CharacterOverview() {
     return { skin, hair, eyes, outfit };
   }, [preview.bodyType, preview.eyeStyle, preview.hairColor, preview.skinTone]);
 
-  const load = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/elysia/armory/inventory");
-      const payload = (await response.json()) as ApiResponse<ArmoryState>;
-      if (!response.ok || payload.error) {
-        if (response.status === 404 || payload.error?.code === "NOT_FOUND") {
-          setVessel(null);
-          setForm(defaultVessel);
-          return;
-        }
-        setError(payload.error?.message ?? "The system destabilized.");
-        return;
-      }
-      if (payload.data?.vessel) {
-        const nextVessel = payload.data.vessel;
-        setVessel(nextVessel);
-        setForm({
-          bodyType: nextVessel.bodyType,
-          skinTone: nextVessel.skinTone,
-          hairStyle: nextVessel.hairStyle,
-          hairColor: nextVessel.hairColor,
-          eyeStyle: nextVessel.eyeStyle ?? "None",
-        });
-      } else {
-        setVessel(null);
-        setForm(defaultVessel);
-      }
-    } catch {
-      setError("The system destabilized.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const loadError = vesselQuery.error ? (vesselQuery.error as Error).message : null;
 
-  useEffect(() => {
-    void load();
-  }, []);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    setError(null);
-    setStatus(null);
-    try {
+  const saveMutation = useMutation({
+    mutationFn: async () => {
       const body = JSON.stringify({
         ...form,
         eyeStyle: form.eyeStyle === "None" ? null : form.eyeStyle,
@@ -155,25 +148,34 @@ export default function CharacterOverview() {
       }
 
       if (!response.ok || payload.error) {
-        setError(payload.error?.message ?? "The system destabilized.");
-        return;
+        throw new Error(payload.error?.message ?? "The system destabilized.");
       }
-      const updated = payload.data ?? {
-        bodyType: form.bodyType,
-        skinTone: form.skinTone,
-        hairStyle: form.hairStyle,
-        hairColor: form.hairColor,
-        eyeStyle: form.eyeStyle === "None" ? null : form.eyeStyle,
-      };
-      setVessel(updated);
-      window.dispatchEvent(new CustomEvent("vessel:update", { detail: updated }));
+
+      return (
+        payload.data ?? {
+          bodyType: form.bodyType,
+          skinTone: form.skinTone,
+          hairStyle: form.hairStyle,
+          hairColor: form.hairColor,
+          eyeStyle: form.eyeStyle === "None" ? null : form.eyeStyle,
+        }
+      );
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["armory", "vessel"], updated);
+      setDraft({});
       setStatus(vessel ? "Avatar updated." : "Avatar forged.");
-      await load();
-    } catch {
-      setError("The system destabilized.");
-    } finally {
-      setIsSaving(false);
-    }
+    },
+    onError: (err) => setError((err as Error).message),
+    onSettled: () => setIsSaving(false),
+  });
+
+  const handleSave = () => {
+    if (saveMutation.isPending) return;
+    setIsSaving(true);
+    setError(null);
+    setStatus(null);
+    saveMutation.mutate();
   };
 
   return (
@@ -207,10 +209,10 @@ export default function CharacterOverview() {
         </header>
 
         {/* Status Messages */}
-        {error ? (
+        {error || loadError ? (
           <div className="flex items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/10 px-5 py-3 text-sm text-destructive">
             <span>⚠️</span>
-            <span>{error}</span>
+            <span>{error ?? loadError}</span>
           </div>
         ) : null}
         {status ? (
@@ -246,7 +248,7 @@ export default function CharacterOverview() {
                       : "border-border/40 bg-background/40 text-muted-foreground"
                   }`}
                 >
-                  {isLoading ? "Loading..." : vessel ? "✓ Forged" : "Unforged"}
+                  {vesselQuery.isLoading ? "Loading..." : vessel ? "✓ Forged" : "Unforged"}
                 </div>
               </div>
 
@@ -264,9 +266,9 @@ export default function CharacterOverview() {
                       <span>{field.label}</span>
                     </span>
                     <select
-                      value={form[field.key as keyof typeof form]}
+                      value={normalizedForm[field.key as keyof typeof normalizedForm]}
                       onChange={(event) =>
-                        setForm((prev) => ({ ...prev, [field.key]: event.target.value }))
+                        setDraft((prev) => ({ ...prev, [field.key]: event.target.value }))
                       }
                       className="w-full rounded-lg border border-border/60 bg-background/60 px-4 py-2.5 text-sm text-foreground transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >

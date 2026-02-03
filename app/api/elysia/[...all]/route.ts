@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import type { TSchema } from "@sinclair/typebox";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 import { db } from "@/db";
@@ -10,11 +10,8 @@ import { getCurrentUser, isAdmin } from "@/lib/auth-session";
 import { applySkillEffects, getSkillCost } from "@/lib/skills/engine";
 import { skillCatalog } from "@/lib/skills/catalog";
 import { calculateRewards } from "@/lib/economy/engine";
-import { getCache, setCache } from "@/lib/cache/redis";
-import { cacheKeys } from "@/lib/cache/keys";
 import { modifierCatalog } from "@/lib/modifiers/catalog";
 import { calculateDifficulty } from "@/lib/difficulty/engine";
-import { invalidateCoreCaches } from "@/lib/cache/invalidate";
 
 const NullableString = t.Union([t.String(), t.Null()]);
 
@@ -28,17 +25,6 @@ const ChallengeSummary = t.Object({
   codexLink: NullableString,
   createdAt: t.String(),
 });
-
-type ChallengeSummaryRow = {
-  id: string;
-  slug: string;
-  title: string;
-  description: string | null;
-  language: string;
-  bugTier: string;
-  codexLink: string | null;
-  createdAt: string;
-};
 
 const QuestStatus = t.Union([
   t.Literal("ACTIVE"),
@@ -309,7 +295,6 @@ const requireAdmin = async (set: { status?: number | string }) => {
 
   return null;
 };
-
 const coerceReward = (value: unknown) => {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
@@ -332,7 +317,7 @@ const loadOrderedChallenges = async () =>
       createdAt: schema.challenges.createdAt,
     })
     .from(schema.challenges)
-    .orderBy(schema.challenges.createdAt, schema.challenges.id);
+    .orderBy(asc(schema.challenges.createdAt), schema.challenges.id);
 
 const ensureQuestStates = async (userId: string) => {
   const challenges = await loadOrderedChallenges();
@@ -461,20 +446,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/challenges",
     async () => {
-      const cached = await getCache<ChallengeSummaryRow[]>(cacheKeys.challenges);
-      if (cached) {
-        return {
-          data: cached.map((row) => ({
-            ...row,
-            createdAt:
-              typeof row.createdAt === "string"
-                ? row.createdAt
-                : new Date(row.createdAt).toISOString(),
-          })),
-          error: null,
-        };
-      }
-
       const rows = await db
         .select({
           id: schema.challenges.id,
@@ -486,14 +457,13 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           codexLink: schema.challenges.codexLink,
           createdAt: schema.challenges.createdAt,
         })
-        .from(schema.challenges);
+        .from(schema.challenges)
+        .orderBy(asc(schema.challenges.createdAt), schema.challenges.id);
 
       const normalized = rows.map((row) => ({
         ...row,
         createdAt: row.createdAt.toISOString(),
       }));
-
-      await setCache(cacheKeys.challenges, normalized);
 
       return {
         data: normalized,
@@ -510,16 +480,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/challenges/:slug",
     async ({ params, set }) => {
-      const cached = await getCache<typeof schema.challenges.$inferSelect>(
-        cacheKeys.challengeBySlug(params.slug),
-      );
-      if (cached) {
-        return {
-          data: cached,
-          error: null,
-        };
-      }
-
       const [row] = await db
         .select({
           id: schema.challenges.id,
@@ -548,8 +508,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           },
         };
       }
-
-      await setCache(cacheKeys.challengeBySlug(params.slug), row);
 
       return {
         data: row,
@@ -1001,14 +959,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/skills",
     async () => {
-      const cached = await getCache<(typeof schema.skills.$inferSelect)[]>(cacheKeys.skills);
-      if (cached) {
-        return {
-          data: cached,
-          error: null,
-        };
-      }
-
       const rows = await db
         .select({
           id: schema.skills.id,
@@ -1020,8 +970,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           isPassive: schema.skills.isPassive,
         })
         .from(schema.skills);
-
-      await setCache(cacheKeys.skills, rows);
 
       return {
         data: rows,
@@ -1038,16 +986,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
   .get(
     "/skills/catalog",
     async () => {
-      const cached = await getCache<typeof skillCatalog>(cacheKeys.skillCatalog);
-      if (cached) {
-        return {
-          data: cached,
-          error: null,
-        };
-      }
-
-      await setCache(cacheKeys.skillCatalog, skillCatalog);
-
       return {
         data: skillCatalog,
         error: null,
@@ -1487,8 +1425,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           createdAt: schema.challenges.createdAt,
         });
 
-      await invalidateCoreCaches();
-
       return {
         data: {
           ...created,
@@ -1543,8 +1479,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           isPassive: schema.skills.isPassive,
           createdAt: schema.skills.createdAt,
         });
-
-      await invalidateCoreCaches();
 
       return {
         data: {
@@ -1631,30 +1565,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
         .from(schema.relics);
 
       if (!user) {
-        const cached = await getCache<
-          Array<{
-            id: string;
-            name: string;
-            description: string;
-            slot: string;
-            rarity: string;
-            priceGold: number;
-            unlockCondition: string | null;
-            requiresSkillId: string | null;
-            isLimited: boolean;
-            isAvailable: boolean;
-            isSealed: boolean;
-            owned: boolean;
-            bound: boolean;
-          }>
-        >(cacheKeys.relicCatalog);
-        if (cached) {
-          return {
-            data: cached,
-            error: null,
-          };
-        }
-
         const response = relicRows.map((relic) => ({
           ...relic,
           unlockCondition: relic.unlockCondition ?? null,
@@ -1663,8 +1573,6 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           owned: false,
           bound: false,
         }));
-
-        await setCache(cacheKeys.relicCatalog, response);
 
         return {
           data: response,

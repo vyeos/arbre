@@ -1,7 +1,9 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { usePlayerStore, type Wallet } from "@/lib/stores/player-store";
 
 type RelicCatalogEntry = {
   id: string;
@@ -20,7 +22,7 @@ type RelicCatalogEntry = {
 };
 
 type WalletResponse = {
-  data: { gold: number } | null;
+  data: Wallet | null;
   error: { code: string; message: string } | null;
 };
 
@@ -51,56 +53,63 @@ const slotIcons: Record<string, string> = {
 };
 
 export default function ArmoryPage() {
-  const [catalog, setCatalog] = useState<RelicCatalogEntry[]>([]);
-  const [gold, setGold] = useState(0);
+  const queryClient = useQueryClient();
+  const wallet = usePlayerStore((state) => state.wallet);
+  const setWallet = usePlayerStore((state) => state.setWallet);
+  const updateWallet = usePlayerStore((state) => state.updateWallet);
   const [error, setError] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
+  const catalogQuery = useQuery({
+    queryKey: ["armory", "catalog"],
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/armory/catalog");
+      const payload = (await response.json()) as CatalogResponse;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to load armory");
+      }
+      return payload.data ?? [];
+    },
+  });
 
-  const loadArmory = async () => {
-    setError(null);
-    const [catalogRes, walletRes] = await Promise.all([
-      fetch("/api/elysia/armory/catalog"),
-      fetch("/api/elysia/economy/wallet"),
-    ]);
-
-    const catalogPayload = (await catalogRes.json()) as CatalogResponse;
-    setCatalog(catalogPayload.data ?? []);
-
-    if (walletRes.ok) {
-      const walletPayload = (await walletRes.json()) as WalletResponse;
-      setGold(walletPayload.data?.gold ?? 0);
-    }
-  };
+  const walletQuery = useQuery<Wallet>({
+    queryKey: ["economy", "wallet"],
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/economy/wallet");
+      const payload = (await response.json()) as WalletResponse;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Wallet fetch failed");
+      }
+      return payload.data ?? wallet;
+    },
+  });
 
   useEffect(() => {
-    void loadArmory();
-  }, []);
+    if (walletQuery.data) {
+      setWallet(walletQuery.data);
+    }
+  }, [setWallet, walletQuery.data]);
 
-  const handleAcquire = async (relicId: string) => {
-    setIsBusy(true);
-    setError(null);
-    try {
+  const acquireMutation = useMutation({
+    mutationFn: async (relicId: string) => {
       const response = await fetch("/api/elysia/armory/acquire", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ relicId }),
       });
-      const payload = (await response.json()) as { error?: { message: string } };
+      const payload = (await response.json()) as { error?: { message: string }; data?: Wallet };
       if (!response.ok) {
-        setError(payload.error?.message ?? "The system destabilized.");
+        throw new Error(payload.error?.message ?? "The system destabilized.");
       }
-      await loadArmory();
-    } catch {
-      setError("The system destabilized.");
-    } finally {
-      setIsBusy(false);
-    }
-  };
+      return payload.data;
+    },
+    onSuccess: (data) => {
+      if (data) updateWallet(data);
+      queryClient.invalidateQueries({ queryKey: ["armory", "catalog"] });
+    },
+    onError: (err) => setError((err as Error).message),
+  });
 
-  const handleBind = async (relicId: string) => {
-    setIsBusy(true);
-    setError(null);
-    try {
+  const bindMutation = useMutation({
+    mutationFn: async (relicId: string) => {
       const response = await fetch("/api/elysia/armory/bind", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,15 +117,31 @@ export default function ArmoryPage() {
       });
       const payload = (await response.json()) as { error?: { message: string } };
       if (!response.ok) {
-        setError(payload.error?.message ?? "The system destabilized.");
+        throw new Error(payload.error?.message ?? "The system destabilized.");
       }
-      await loadArmory();
-    } catch {
-      setError("The system destabilized.");
-    } finally {
-      setIsBusy(false);
-    }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["armory", "catalog"] });
+    },
+    onError: (err) => setError((err as Error).message),
+  });
+
+  const handleAcquire = (relicId: string) => {
+    setError(null);
+    if (acquireMutation.isPending) return;
+    acquireMutation.mutate(relicId);
   };
+
+  const handleBind = (relicId: string) => {
+    setError(null);
+    if (bindMutation.isPending) return;
+    bindMutation.mutate(relicId);
+  };
+
+  const catalog = catalogQuery.data ?? [];
+  const gold = wallet.gold ?? 0;
+  const isBusy = acquireMutation.isPending || bindMutation.isPending;
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background via-card/20 to-background text-foreground">

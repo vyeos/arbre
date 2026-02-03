@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+const executionTestCaseSchema = z.object({
+  id: z.string().optional(),
+  input: z.string().min(0),
+  expectedOutput: z.string().min(0),
+  hidden: z.boolean().optional(),
+});
+
+const executionPlanSchema = z.object({
+  tests: z.array(executionTestCaseSchema).min(1),
+  submitTests: z.array(executionTestCaseSchema).optional(),
+  harness: z.string().optional(),
+});
+
 export const challengeSchema = z.object({
   slug: z.string().min(2),
   title: z.string().min(2),
@@ -9,6 +22,7 @@ export const challengeSchema = z.object({
   starterCode: z.string().min(1),
   constraints: z.record(z.string(), z.unknown()).default({}),
   rewards: z.record(z.string(), z.unknown()).default({}),
+  execution: executionPlanSchema.optional(),
   serverHealthDrainRate: z.number().int().min(1).default(1),
   codexLink: z.string().url().nullable().optional(),
 });

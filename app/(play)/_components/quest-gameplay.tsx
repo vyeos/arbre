@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
+import { useQuery } from "@tanstack/react-query";
 import { useServerHealth, type DrainModifier } from "@/lib/server-health";
 import type {
   ExecutionApiResponse,
   ExecutionLanguage,
   ExecutionTestCase,
 } from "@/lib/execution/types";
+import { usePlayerStore, type Wallet } from "@/lib/stores/player-store";
 
 type QuestSummary = {
   id: string;
@@ -41,11 +43,10 @@ type QuestStateResponse = {
   states: QuestStateEntry[];
 };
 
-type Wallet = {
-  bytes: number;
-  focus: number;
-  commits: number;
-  gold: number;
+type ExecutionPlan = {
+  tests: ExecutionTestCase[];
+  submitTests?: ExecutionTestCase[];
+  buildCode: (code: string) => string;
 };
 
 type ApiResponse<T> = {
@@ -66,6 +67,52 @@ const normalizeLanguage = (language: string): ExecutionLanguage => {
   if (key === "java") return "java";
   if (key === "go") return "go";
   return "typescript";
+};
+
+const coerceTestCases = (value: unknown): ExecutionTestCase[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const payload = item as Record<string, unknown>;
+      const input = payload.input;
+      const expectedOutput = payload.expectedOutput;
+      if (typeof input !== "string" || typeof expectedOutput !== "string") return null;
+      const id = typeof payload.id === "string" ? payload.id : `t${index + 1}`;
+      const hidden = typeof payload.hidden === "boolean" ? payload.hidden : undefined;
+      return hidden !== undefined
+        ? { id, input, expectedOutput, hidden }
+        : { id, input, expectedOutput };
+    })
+    .filter((item): item is ExecutionTestCase => Boolean(item));
+};
+
+const resolveExecutionPlan = (detail: QuestDetail): ExecutionPlan | null => {
+  const constraints = (detail.constraints ?? {}) as Record<string, unknown>;
+  const execution =
+    (constraints.execution as Record<string, unknown> | undefined) ??
+    (constraints.tests || constraints.submitTests || constraints.harness ? constraints : null);
+
+  if (execution) {
+    const tests = coerceTestCases(execution.tests);
+    if (tests.length) {
+      const submitTests = coerceTestCases(execution.submitTests);
+      const harness = typeof execution.harness === "string" ? execution.harness : "";
+      return {
+        tests,
+        submitTests: submitTests.length ? submitTests : undefined,
+        buildCode: (code: string) => (harness ? `${code}\n${harness}\n` : code),
+      };
+    }
+  }
+
+  const legacy = questRunners[detail.slug];
+  if (!legacy) return null;
+  return {
+    tests: legacy.tests,
+    submitTests: legacy.submitTests,
+    buildCode: legacy.buildCode,
+  };
 };
 
 const questRunners: Record<
@@ -106,17 +153,16 @@ const onboardingSteps = [
   },
 ];
 
-const emptyWallet: Wallet = { bytes: 0, focus: 0, commits: 0, gold: 0 };
-
 export default function QuestGameplay() {
   const [questList, setQuestList] = useState<QuestSummary[]>([]);
   const [questSlug, setQuestSlug] = useState<string | null>(null);
   const [questDetail, setQuestDetail] = useState<QuestDetail | null>(null);
   const [questStates, setQuestStates] = useState<Record<string, QuestState>>({});
   const [finalCodeByQuest, setFinalCodeByQuest] = useState<Record<string, string>>({});
-  const [wallet, setWallet] = useState<Wallet>(emptyWallet);
-  const [authRequired, setAuthRequired] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const wallet = usePlayerStore((state) => state.wallet);
+  const setWallet = usePlayerStore((state) => state.setWallet);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoCompleted, setDemoCompleted] = useState(0);
 
   const [code, setCode] = useState("");
   const [logs, setLogs] = useState<
@@ -137,6 +183,7 @@ export default function QuestGameplay() {
   } | null>(null);
 
   const skipCost = 15;
+  const demoLimit = 5;
 
   const questId = questDetail?.id ?? null;
   const questState = questId ? (questStates[questId] ?? "LOCKED") : "LOCKED";
@@ -171,6 +218,21 @@ export default function QuestGameplay() {
   }, []);
 
   useEffect(() => {
+    const stored = window.localStorage.getItem("demo-quests-cleared");
+    if (stored) {
+      const parsed = Number(stored);
+      if (Number.isFinite(parsed)) {
+        setDemoCompleted(Math.min(demoLimit, Math.max(0, Math.floor(parsed))));
+      }
+    }
+  }, [demoLimit]);
+
+  useEffect(() => {
+    if (!demoMode) return;
+    window.localStorage.setItem("demo-quests-cleared", String(demoCompleted));
+  }, [demoCompleted, demoMode]);
+
+  useEffect(() => {
     if (onboardingSeen) {
       window.localStorage.setItem("quest-onboarding-seen", "true");
     }
@@ -181,118 +243,163 @@ export default function QuestGameplay() {
     window.setTimeout(() => setRewardBanner(null), 2200);
   };
 
-  const loadWallet = async () => {
-    try {
-      const response = await fetch("/api/elysia/economy/wallet");
-      if (!response.ok) return;
-      const payload = (await response.json()) as ApiResponse<Wallet>;
-      if (payload.data) setWallet(payload.data);
-    } catch {
-      // ignore
-    }
-  };
+  const questListQuery = useQuery<QuestSummary[]>({
+    queryKey: ["challenges", "list"],
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/challenges");
+      const payload = (await response.json()) as ApiResponse<QuestSummary[]>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to load quests");
+      }
+      return payload.data ?? [];
+    },
+  });
 
-  const loadQuestState = async (list: QuestSummary[]) => {
-    try {
+  const walletQuery = useQuery<Wallet>({
+    queryKey: ["economy", "wallet"],
+    enabled: !demoMode,
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/economy/wallet");
+      const payload = (await response.json()) as ApiResponse<Wallet>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Wallet fetch failed");
+      }
+      return payload.data ?? wallet;
+    },
+  });
+
+  useEffect(() => {
+    if (walletQuery.data) {
+      setWallet(walletQuery.data);
+    }
+  }, [setWallet, walletQuery.data]);
+
+  const questStateQuery = useQuery<QuestStateResponse | null>({
+    queryKey: ["quests", "state"],
+    enabled: (questListQuery.data?.length ?? 0) > 0,
+    queryFn: async () => {
       const response = await fetch("/api/elysia/quests/state");
       if (response.status === 401) {
-        setAuthRequired(true);
-        return;
+        setDemoMode(true);
+        return null;
       }
       const payload = (await response.json()) as ApiResponse<QuestStateResponse>;
-      if (!payload.data) return;
-
-      const nextStates: Record<string, QuestState> = {};
-      const finalCodes: Record<string, string> = {};
-      payload.data.states.forEach((entry) => {
-        nextStates[entry.challengeId] = entry.status;
-        if (entry.finalCode) finalCodes[entry.challengeId] = entry.finalCode;
-      });
-
-      setQuestStates(nextStates);
-      setFinalCodeByQuest(finalCodes);
-
-      const activeId = payload.data.activeChallengeId;
-      const activeQuest = list.find((item) => item.id === activeId) ?? list[0];
-      setQuestSlug(activeQuest?.slug ?? null);
-    } catch {
-      // ignore
-    }
-  };
-
-  const loadSkillGate = useCallback(
-    async (firstQuestId: string | null) => {
-      if (!firstQuestId) return;
-      const isFirstCompleted = questStates[firstQuestId] === "COMPLETED";
-      if (!isFirstCompleted) {
-        setSkillGateActive(false);
-        return;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to load quest state");
       }
-
-      try {
-        const response = await fetch("/api/elysia/skills/unlocks");
-        if (!response.ok) return;
-        const payload = (await response.json()) as ApiResponse<{
-          unlocks: { id: string; tier: number }[];
-        }>;
-        const count = payload.data?.unlocks?.length ?? 0;
-        setSkillGateActive(count === 0);
-      } catch {
-        // ignore
-      }
+      return payload.data ?? null;
     },
-    [questStates],
-  );
+  });
+
+  const skillUnlocksQuery = useQuery<{ unlocks: { id: string; tier: number }[] }>({
+    queryKey: ["skills", "unlocks"],
+    enabled: (questListQuery.data?.length ?? 0) > 0 && !demoMode,
+    queryFn: async () => {
+      const response = await fetch("/api/elysia/skills/unlocks");
+      const payload = (await response.json()) as ApiResponse<{
+        unlocks: { id: string; tier: number }[];
+      }>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to load skill unlocks");
+      }
+      return payload.data ?? { unlocks: [] };
+    },
+  });
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch("/api/elysia/challenges");
-        const payload = (await response.json()) as ApiResponse<QuestSummary[]>;
-        const list = payload.data ?? [];
-        if (!mounted) return;
-        setQuestList(list);
-        await Promise.all([loadQuestState(list), loadWallet()]);
-      } catch {
-        // ignore
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    void load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (questListQuery.data) {
+      setQuestList(questListQuery.data);
+    }
+  }, [questListQuery.data]);
 
   useEffect(() => {
-    const loadDetail = async () => {
-      if (!questSlug) return;
-      try {
-        const response = await fetch(`/api/elysia/challenges/${questSlug}`);
-        if (!response.ok) return;
-        const payload = (await response.json()) as ApiResponse<QuestDetail>;
-        if (!payload.data) return;
-        setQuestDetail(payload.data);
-        const completedCode = finalCodeByQuest[payload.data.id];
-        setCode(completedCode ?? payload.data.starterCode);
-        resetHealth();
-      } catch {
-        // ignore
+    if (!demoMode || !questListQuery.data?.length) return;
+    const capped = Math.min(demoCompleted, demoLimit);
+    const nextStates: Record<string, QuestState> = {};
+    questListQuery.data.forEach((quest, index) => {
+      if (index < capped) {
+        nextStates[quest.id] = "COMPLETED";
+      } else if (index === capped && capped < demoLimit) {
+        nextStates[quest.id] = "ACTIVE";
+      } else {
+        nextStates[quest.id] = "LOCKED";
       }
-    };
+    });
+    setQuestStates(nextStates);
+    setFinalCodeByQuest({});
+    const activeQuest = questListQuery.data[capped] ?? questListQuery.data[0];
+    setQuestSlug(activeQuest?.slug ?? null);
+  }, [demoCompleted, demoLimit, demoMode, questListQuery.data]);
 
-    void loadDetail();
-  }, [questSlug, finalCodeByQuest, resetHealth]);
+  useEffect(() => {
+    if (demoMode) return;
+    const payload = questStateQuery.data;
+    if (!payload || !questListQuery.data?.length) return;
+
+    const nextStates: Record<string, QuestState> = {};
+    const finalCodes: Record<string, string> = {};
+    payload.states.forEach((entry) => {
+      nextStates[entry.challengeId] = entry.status;
+      if (entry.finalCode) finalCodes[entry.challengeId] = entry.finalCode;
+    });
+
+    setQuestStates(nextStates);
+    setFinalCodeByQuest(finalCodes);
+
+    const activeId = payload.activeChallengeId;
+    const activeQuest =
+      questListQuery.data.find((item) => item.id === activeId) ?? questListQuery.data[0];
+    setQuestSlug(activeQuest?.slug ?? null);
+  }, [demoMode, questStateQuery.data, questListQuery.data]);
+
+  const questDetailQuery = useQuery({
+    queryKey: ["challenges", "detail", questSlug],
+    enabled: Boolean(questSlug),
+    queryFn: async () => {
+      const response = await fetch(`/api/elysia/challenges/${questSlug}`);
+      const payload = (await response.json()) as ApiResponse<QuestDetail>;
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? "Failed to load quest detail");
+      }
+      return payload.data ?? null;
+    },
+  });
+
+  const isLoading =
+    questListQuery.isLoading ||
+    questStateQuery.isLoading ||
+    questDetailQuery.isLoading ||
+    skillUnlocksQuery.isLoading;
+
+  useEffect(() => {
+    if (!questDetailQuery.data) return;
+    setQuestDetail(questDetailQuery.data);
+    const completedCode = finalCodeByQuest[questDetailQuery.data.id];
+    setCode(completedCode ?? questDetailQuery.data.starterCode);
+    resetHealth();
+  }, [questDetailQuery.data, finalCodeByQuest, resetHealth]);
 
   useEffect(() => {
     if (!questList.length) return;
+    if (demoMode) {
+      setSkillGateActive(false);
+      return;
+    }
     const firstQuestId = questList[0]?.id ?? null;
-    void loadSkillGate(firstQuestId);
-  }, [questList, loadSkillGate]);
+    if (!firstQuestId) return;
+    const isFirstCompleted = questStates[firstQuestId] === "COMPLETED";
+    if (!isFirstCompleted) {
+      setSkillGateActive(false);
+      return;
+    }
+    const count = skillUnlocksQuery.data?.unlocks?.length ?? 0;
+    setSkillGateActive(count === 0);
+  }, [demoMode, questList, questStates, skillUnlocksQuery.data]);
+
+  const handleSkillGateCheck = async () => {
+    if (demoMode) return;
+    await skillUnlocksQuery.refetch();
+  };
 
   useEffect(() => {
     if (wallet.gold > 0) return;
@@ -314,9 +421,9 @@ export default function QuestGameplay() {
     appendLog("Channeling runes...", "neutral");
 
     await new Promise((resolve) => setTimeout(resolve, 800));
-    const runner = questRunners[questDetail.slug];
-    if (!runner) {
-      appendLog("No trial script bound for this quest.", "danger");
+    const plan = resolveExecutionPlan(questDetail);
+    if (!plan) {
+      appendLog("No trial script bound in this quest's Codex.", "danger");
       setIsRunning(false);
       return;
     }
@@ -333,8 +440,8 @@ export default function QuestGameplay() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: normalizeLanguage(questDetail.language),
-          code: runner.buildCode(preparedCode),
-          tests: runner.tests,
+          code: plan.buildCode(preparedCode),
+          tests: plan.tests,
           timeoutMs: 2000,
         }),
       });
@@ -386,9 +493,9 @@ export default function QuestGameplay() {
     setIsRunning(true);
     appendLog("Submitting fix to the Tribunal...", "neutral");
 
-    const runner = questRunners[questDetail.slug];
-    if (!runner) {
-      appendLog("No trial script bound for this quest.", "danger");
+    const plan = resolveExecutionPlan(questDetail);
+    if (!plan) {
+      appendLog("No trial script bound in this quest's Codex.", "danger");
       setIsRunning(false);
       return;
     }
@@ -405,8 +512,8 @@ export default function QuestGameplay() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: normalizeLanguage(questDetail.language),
-          code: runner.buildCode(preparedCode),
-          tests: runner.submitTests ?? runner.tests,
+          code: plan.buildCode(preparedCode),
+          tests: plan.submitTests ?? plan.tests,
           timeoutMs: 2000,
         }),
       });
@@ -427,6 +534,13 @@ export default function QuestGameplay() {
       );
 
       if (runStatus === "passed") {
+        if (demoMode) {
+          appendLog("Quest Cleared in Demo. Progress etched into the Codex.", "success");
+          setFinalCodeByQuest((prev) => ({ ...prev, [questId]: code }));
+          setDemoCompleted((prev) => Math.min(demoLimit, prev + 1));
+          setIsRunning(false);
+          return;
+        }
         const completeResponse = await fetch("/api/elysia/quests/complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -446,7 +560,7 @@ export default function QuestGameplay() {
         appendLog("Quest Cleared! Rewards stored in the Armory.", "success");
         setWallet(completePayload.data.wallet);
         showRewards(completePayload.data.reward);
-        await loadQuestState(questList);
+        await questStateQuery.refetch();
       } else {
         appendLog("You took damage. The Tribunal demands more precision.", "danger");
         applyDamage(15);
@@ -461,6 +575,10 @@ export default function QuestGameplay() {
 
   const handleSkip = async () => {
     if (crashed || isRunning || !isPlayable || !questId) return;
+    if (demoMode) {
+      appendLog("Demo mode: skipping is sealed.", "danger");
+      return;
+    }
     if (wallet.bytes < skipCost) {
       appendLog("Not enough Bytes to bend fate.", "danger");
       return;
@@ -483,7 +601,7 @@ export default function QuestGameplay() {
 
       setWallet(payload.data.wallet);
       appendLog("Fate bent. Quest skipped; the seal remains.", "neutral");
-      await loadQuestState(questList);
+      await questStateQuery.refetch();
     } catch {
       appendLog("The system destabilized.", "danger");
     }
@@ -502,17 +620,7 @@ export default function QuestGameplay() {
     );
   }
 
-  if (authRequired) {
-    return (
-      <div className="rounded-2xl border border-border bg-card/80 p-6 text-sm text-muted-foreground">
-        The gate is sealed.{" "}
-        <Link href="/login" className="text-primary">
-          Sign in
-        </Link>{" "}
-        to enter the live Quest Arena.
-      </div>
-    );
-  }
+  const demoLimitReached = demoMode && demoCompleted >= demoLimit;
 
   if (!questDetail) {
     return (
@@ -534,6 +642,33 @@ export default function QuestGameplay() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
       <section className="relative rounded-2xl border border-border bg-card/80 p-6 shadow-xl">
+        {demoMode ? (
+          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-xs text-primary">
+            Demo Mode: Clear up to {demoLimit} Quests before the Gate seals.
+          </div>
+        ) : null}
+        {demoLimitReached ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-6">
+            <div className="max-w-md rounded-2xl border border-border bg-background/95 p-6 text-sm text-foreground shadow-xl">
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                Demo Limit Reached
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">The Gate Seals Here</h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                You cleared {demoLimit} Quests. Sign in to continue your ascent and unlock the full
+                Quest chain.
+              </p>
+              <div className="mt-4 flex justify-end">
+                <Link
+                  href="/login"
+                  className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                >
+                  Enter the Gate
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {dialogActive ? (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-6">
             <div className="max-w-md rounded-2xl border border-border bg-background/95 p-6 text-sm text-foreground shadow-xl">
@@ -600,7 +735,7 @@ export default function QuestGameplay() {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => loadSkillGate(questList[0]?.id ?? null)}
+                  onClick={handleSkillGateCheck}
                   className="rounded-md border border-border bg-background/70 px-4 py-2 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
                 >
                   I Bound a Skill
@@ -748,7 +883,7 @@ export default function QuestGameplay() {
               minimap: { enabled: false },
               fontSize: 14,
               scrollBeyondLastLine: false,
-              // readOnly: crashed || isReadOnly || skillGateActive,
+              readOnly: crashed || isReadOnly || skillGateActive,
             }}
           />
         </div>

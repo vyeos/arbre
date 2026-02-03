@@ -15,9 +15,12 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "bun run scripts/seed.ts"
+    "db:seed": "bun run scripts/seed.ts",
+    "e2b:build:dev": "cd code-sandbox && npx tsx build.dev.ts",
+    "e2b:build:prod": "cd code-sandbox && npx tsx build.prod.ts"
   },
   "dependencies": {
+    "@e2b/code-interpreter": "^2.3.3",
     "@elysiajs/eden": "^1.4.6",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-form": "^1.28.0",
@@ -29,7 +32,6 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "elysia": "^1.4.22",
-    "ioredis": "^5.9.2",
     "lucide-react": "^0.563.0",
     "monaco-editor": "^0.55.1",
     "next": "16.1.6",
@@ -40,7 +42,8 @@
     "react-dom": "19.2.3",
     "reactflow": "^11.11.4",
     "tailwind-merge": "^3.4.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",

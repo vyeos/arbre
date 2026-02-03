@@ -4,7 +4,6 @@ import { challenges, skills, relics } from "../db/schema";
 import { loadChallengeDefinitions } from "../lib/challenges/loader";
 import { skillCatalog } from "../lib/skills/catalog";
 import { relicCatalog } from "../lib/armory/catalog";
-import { invalidateCoreCaches } from "../lib/cache/invalidate";
 
 async function main() {
   console.log("🌱 Starting database seed...");
@@ -24,7 +23,10 @@ async function main() {
         language: challenge.language,
         bugTier: challenge.bugTier,
         starterCode: challenge.starterCode,
-        constraints: challenge.constraints,
+        constraints: {
+          ...challenge.constraints,
+          ...(challenge.execution ? { execution: challenge.execution } : {}),
+        },
         rewards: challenge.rewards,
         serverHealthDrainRate: challenge.serverHealthDrainRate,
         codexLink: challenge.codexLink ?? null,
@@ -71,8 +73,6 @@ async function main() {
       })),
     )
     .onConflictDoNothing();
-
-  await invalidateCoreCaches();
 
   const totalRows = challengeDefinitions.length + skillCatalog.length + relicCatalog.length;
   console.log(`✅ Seed complete: ${totalRows} rows inserted`);
