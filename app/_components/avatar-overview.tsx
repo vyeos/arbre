@@ -177,228 +177,222 @@ export default function CharacterOverview() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-background via-card to-background text-foreground">
+    <div className="min-h-screen bg-linear-to-b from-background via-card/20 to-background text-foreground">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
-        <header className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Avatar Overview
-          </p>
-          <h1 className="text-3xl font-semibold">Forge and refine your Avatar</h1>
-          <p className="text-sm text-muted-foreground">
-            Your Avatar is your identity. Customize it here at any time, then bind Relics in the
-            Armory for prestige.
+        {/* Header */}
+        <header className="relative space-y-4">
+          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl" />
+
+          <div className="relative flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 rounded-lg border border-purple-500/40 bg-purple-500/10 px-4 py-1.5">
+              <span className="text-lg">🎭</span>
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-purple-300">
+                Character Vessel
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {vessel ? "Forged" : "Unforged"} Avatar
+            </span>
+          </div>
+
+          <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl">
+            <span className="text-foreground">Forge and Refine </span>
+            <span className="text-purple-400">Your Avatar</span>
+          </h1>
+
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
+            Your Avatar is your identity in the realm. Customize your vessel here, then bind Relics
+            in the Armory for ultimate prestige.
           </p>
         </header>
 
+        {/* Status Messages */}
         {error ? (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-destructive">
-            {error}
+          <div className="flex items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/10 px-5 py-3 text-sm text-destructive">
+            <span>⚠️</span>
+            <span>{error}</span>
           </div>
         ) : null}
         {status ? (
-          <div className="rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-xs text-primary">
-            {status}
+          <div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 px-5 py-3 text-sm text-primary">
+            <span>✨</span>
+            <span>{status}</span>
           </div>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-border bg-card/80 p-6 shadow-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Vessel Forge
-                </p>
-                <h2 className="mt-2 text-xl font-semibold">Choose your base form</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {vessel
-                    ? "Refine your existing vessel without losing progress."
-                    : "Forge your first vessel to begin your ascent."}
-                </p>
-              </div>
-              <div className="rounded-full border border-border bg-background/70 px-3 py-1 text-xs text-muted-foreground">
-                {isLoading ? "Loading" : vessel ? "Forged" : "Unforged"}
-              </div>
-            </div>
+        <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          {/* Forge Panel */}
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-b from-card/80 to-card/40 p-6 shadow-xl">
+            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-purple-500/10 blur-2xl" />
 
-            <div className="mt-6 grid gap-4 text-sm">
-              <label className="space-y-1">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Body Type
-                </span>
-                <select
-                  value={form.bodyType}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, bodyType: event.target.value }))
-                  }
-                  className="w-full rounded-md border border-border bg-background/70 px-3 py-2 text-sm text-foreground"
-                >
-                  {bodyTypes.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Skin Tone
-                </span>
-                <select
-                  value={form.skinTone}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, skinTone: event.target.value }))
-                  }
-                  className="w-full rounded-md border border-border bg-background/70 px-3 py-2 text-sm text-foreground"
-                >
-                  {skinTones.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Hair Style
-                </span>
-                <select
-                  value={form.hairStyle}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, hairStyle: event.target.value }))
-                  }
-                  className="w-full rounded-md border border-border bg-background/70 px-3 py-2 text-sm text-foreground"
-                >
-                  {hairStyles.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Hair Color
-                </span>
-                <select
-                  value={form.hairColor}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, hairColor: event.target.value }))
-                  }
-                  className="w-full rounded-md border border-border bg-background/70 px-3 py-2 text-sm text-foreground"
-                >
-                  {hairColors.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Eye Style
-                </span>
-                <select
-                  value={form.eyeStyle}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, eyeStyle: event.target.value }))
-                  }
-                  className="w-full rounded-md border border-border bg-background/70 px-3 py-2 text-sm text-foreground"
-                >
-                  {eyeStyles.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="mt-5 w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSaving ? "Channeling..." : vessel ? "Save Vessel Changes" : "Forge Avatar"}
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card/80 p-6 shadow-xl">
-            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              Vessel Preview
-            </p>
-            <div className="mt-4 grid gap-6 rounded-2xl border border-border bg-background/70 p-6 md:grid-cols-[200px_1fr] md:items-center">
-              <div className="flex items-center justify-center">
-                <div className="rounded-2xl border border-border bg-background/90 p-4 shadow-lg">
-                  <div
-                    className="grid h-40 w-32"
-                    style={{
-                      gridTemplateColumns: "repeat(12, 1fr)",
-                      gridTemplateRows: "repeat(16, 1fr)",
-                      gap: "2px",
-                    }}
-                  >
-                    {[
-                      // Head + hair (rows 1-4)
-                      0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1,
-                      1, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0,
-                      // Eyes row
-                      0, 1, 2, 2, 3, 2, 2, 3, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0,
-                      // Neck
-                      0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0,
-                      // Torso
-                      0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 4,
-                      4, 4, 4, 4, 4, 4, 4, 4, 4, 0,
-                      // Belt
-                      0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0,
-                      // Legs
-                      0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0, 0,
-                      4, 4, 4, 0, 0, 4, 4, 4, 0, 0,
-                      // Boots
-                      0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0,
-                    ].map((cell, index) => {
-                      const color =
-                        cell === 1
-                          ? pixelColors.hair
-                          : cell === 2
-                            ? pixelColors.skin
-                            : cell === 3
-                              ? pixelColors.eyes
-                              : cell === 4
-                                ? pixelColors.outfit
-                                : "transparent";
-                      return (
-                        <div
-                          key={index}
-                          className="bg-transparent"
-                          style={{ backgroundColor: color }}
-                        />
-                      );
-                    })}
+            <div className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    <span>🔮</span>
+                    <span>Vessel Forge</span>
                   </div>
+                  <h2 className="mt-2 font-serif text-xl font-semibold">Choose Your Base Form</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {vessel
+                      ? "Refine your existing vessel without losing progress."
+                      : "Forge your first vessel to begin your ascent."}
+                  </p>
+                </div>
+                <div
+                  className={`rounded-lg border px-3 py-1.5 text-xs ${
+                    vessel
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border/40 bg-background/40 text-muted-foreground"
+                  }`}
+                >
+                  {isLoading ? "Loading..." : vessel ? "✓ Forged" : "Unforged"}
                 </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Body</span>
-                <span className="font-semibold text-foreground">{preview.bodyType}</span>
+
+              <div className="mt-6 grid gap-4 text-sm">
+                {[
+                  { key: "bodyType", label: "Body Type", icon: "🧍", options: bodyTypes },
+                  { key: "skinTone", label: "Skin Tone", icon: "🎨", options: skinTones },
+                  { key: "hairStyle", label: "Hair Style", icon: "💇", options: hairStyles },
+                  { key: "hairColor", label: "Hair Color", icon: "🖌️", options: hairColors },
+                  { key: "eyeStyle", label: "Eye Style", icon: "👁️", options: eyeStyles },
+                ].map((field) => (
+                  <label key={field.key} className="space-y-1.5">
+                    <span className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-muted-foreground">
+                      <span>{field.icon}</span>
+                      <span>{field.label}</span>
+                    </span>
+                    <select
+                      value={form[field.key as keyof typeof form]}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, [field.key]: event.target.value }))
+                      }
+                      className="w-full rounded-lg border border-border/60 bg-background/60 px-4 py-2.5 text-sm text-foreground transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {field.options.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
               </div>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Skin</span>
-                <span className="font-semibold text-foreground">{preview.skinTone}</span>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="mt-6 w-full rounded-lg bg-linear-to-r from-purple-600 to-purple-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:shadow-purple-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving
+                  ? "⏳ Channeling essence..."
+                  : vessel
+                    ? "🔮 Save Vessel Changes"
+                    : "✨ Forge Avatar"}
+              </button>
+            </div>
+          </div>
+
+          {/* Preview Panel */}
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-b from-card/80 to-card/40 p-6 shadow-xl">
+            <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-amber-500/10 blur-2xl" />
+
+            <div className="relative">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                <span>👤</span>
+                <span>Vessel Preview</span>
               </div>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Hair</span>
-                <span className="font-semibold text-foreground">
-                  {preview.hairStyle} • {preview.hairColor}
-                </span>
+
+              <div className="mt-4 flex flex-col gap-6 rounded-xl border border-border/40 bg-background/40 p-6">
+                {/* Pixel Avatar */}
+                <div className="flex items-center justify-center">
+                  <div className="rounded-2xl border border-border/60 bg-linear-to-b from-background/90 to-background/70 p-5 shadow-lg">
+                    <div
+                      className="grid h-44 w-36"
+                      style={{
+                        gridTemplateColumns: "repeat(12, 1fr)",
+                        gridTemplateRows: "repeat(16, 1fr)",
+                        gap: "2px",
+                      }}
+                    >
+                      {[
+                        // Head + hair (rows 1-4)
+                        0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+                        1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0,
+                        // Eyes row
+                        0, 1, 2, 2, 3, 2, 2, 3, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0,
+                        // Neck
+                        0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0,
+                        // Torso
+                        0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0,
+                        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0,
+                        // Belt
+                        0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0,
+                        // Legs
+                        0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0,
+                        0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0,
+                        // Boots
+                        0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0,
+                      ].map((cell, index) => {
+                        const color =
+                          cell === 1
+                            ? pixelColors.hair
+                            : cell === 2
+                              ? pixelColors.skin
+                              : cell === 3
+                                ? pixelColors.eyes
+                                : cell === 4
+                                  ? pixelColors.outfit
+                                  : "transparent";
+                        return (
+                          <div
+                            key={index}
+                            className="transition-colors duration-300"
+                            style={{ backgroundColor: color }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Display */}
+                <div className="grid gap-3">
+                  {[
+                    { label: "Body", value: preview.bodyType, icon: "🧍" },
+                    { label: "Skin", value: preview.skinTone, icon: "🎨" },
+                    {
+                      label: "Hair",
+                      value: `${preview.hairStyle} • ${preview.hairColor}`,
+                      icon: "💇",
+                    },
+                    { label: "Eyes", value: preview.eyeStyle, icon: "👁️" },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="flex items-center justify-between rounded-lg border border-border/30 bg-background/30 px-4 py-2.5 text-sm"
+                    >
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <span>{stat.icon}</span>
+                        <span>{stat.label}</span>
+                      </span>
+                      <span className="font-medium text-foreground">{stat.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Eyes</span>
-                <span className="font-semibold text-foreground">{preview.eyeStyle}</span>
+
+              {/* Relic Slots Preview */}
+              <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                <div className="flex items-center gap-2 text-xs text-amber-300">
+                  <span>💎</span>
+                  <span>Relic Slots Available</span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Visit the Armory to bind cosmetic Relics to your Avatar.
+                </p>
               </div>
             </div>
           </div>

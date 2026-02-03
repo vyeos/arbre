@@ -28,13 +28,25 @@ type CatalogResponse = {
   error: { code: string; message: string } | null;
 };
 
-const rarityStyles: Record<string, string> = {
-  Common: "text-muted-foreground",
-  Uncommon: "text-emerald-300",
-  Rare: "text-sky-300",
-  Epic: "text-purple-300",
-  Legendary: "text-amber-300",
-  Mythic: "text-pink-300",
+const rarityConfig: Record<string, { color: string; glow: string; icon: string }> = {
+  Common: { color: "text-slate-400", glow: "", icon: "◆" },
+  Uncommon: { color: "text-emerald-400", glow: "shadow-emerald-500/10", icon: "◆" },
+  Rare: { color: "text-sky-400", glow: "shadow-sky-500/10", icon: "◆◆" },
+  Epic: { color: "text-purple-400", glow: "shadow-purple-500/20", icon: "◆◆◆" },
+  Legendary: { color: "text-amber-400", glow: "shadow-amber-500/20", icon: "★" },
+  Mythic: { color: "text-pink-400", glow: "shadow-pink-500/30", icon: "✦" },
+};
+
+const slotIcons: Record<string, string> = {
+  Head: "👑",
+  Face: "🎭",
+  Body: "🧥",
+  Hands: "🧤",
+  Handheld: "⚔️",
+  Back: "🦇",
+  Background: "🌌",
+  Frame: "🖼️",
+  Aura: "✨",
 };
 
 export default function ArmoryPage() {
@@ -106,84 +118,180 @@ export default function ArmoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-background via-card to-background text-foreground">
+    <div className="min-h-screen bg-linear-to-b from-background via-card/20 to-background text-foreground">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12">
-        <header className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Armory</p>
-          <h1 className="text-3xl font-semibold">Bind Relics to your Avatar</h1>
-          <p className="text-sm text-muted-foreground">
-            Acquire cosmetics with Gold earned from Quests. Relics never alter gameplay power — only
-            prestige.
+        {/* Header */}
+        <header className="relative space-y-4">
+          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl" />
+
+          <div className="relative flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-1.5">
+              <span className="text-lg">🛡️</span>
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-amber-300">
+                Relic Armory
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground">Cosmetics • No stat boosts</span>
+          </div>
+
+          <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl">
+            <span className="text-foreground">Acquire and Bind </span>
+            <span className="text-amber-400">Legendary Relics</span>
+          </h1>
+
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
+            Spend your hard-earned Gold on prestigious cosmetics. Relics never alter your power —
+            only your prestige. Let your victories shine.
           </p>
         </header>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card/70 px-4 py-3 text-sm">
-          <div>
-            <span className="text-muted-foreground">Vault Gold:</span>{" "}
-            <span className="font-semibold text-amber-300">{gold}</span>
+        {/* Vault Status */}
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-linear-to-r from-card/60 to-card/40 px-6 py-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-amber-500/40 bg-amber-500/10">
+              <span className="text-2xl">🪙</span>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Vault Gold</p>
+              <p className="text-2xl font-bold text-amber-300">{gold.toLocaleString()}</p>
+            </div>
           </div>
-          {error ? <span className="text-xs text-destructive">{error}</span> : null}
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>{catalog.filter((r) => r.owned).length} Relics Owned</span>
+            <span className="h-4 w-px bg-border/60" />
+            <span>{catalog.filter((r) => r.bound).length} Relics Bound</span>
+          </div>
         </div>
 
-        <section className="grid gap-4 md:grid-cols-2">
+        {error ? (
+          <div className="flex items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/10 px-5 py-3 text-sm text-destructive">
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        ) : null}
+
+        {/* Relic Grid */}
+        <section className="grid gap-5 md:grid-cols-2">
           {catalog.map((relic) => {
             const canAcquire = !relic.owned && !relic.isSealed && relic.isAvailable;
+            const config = rarityConfig[relic.rarity] ?? rarityConfig.Common;
+            const slotIcon = slotIcons[relic.slot] ?? "💎";
+
             return (
               <div
                 key={relic.id}
-                className="rounded-2xl border border-border bg-card/80 p-5 shadow-lg"
+                className={`group relative overflow-hidden rounded-2xl border p-6 transition-all hover:shadow-xl ${
+                  relic.owned
+                    ? `border-primary/40 bg-linear-to-br from-primary/10 to-primary/5 ${config.glow}`
+                    : relic.isSealed
+                      ? "border-border/30 bg-card/30"
+                      : `border-border/60 bg-linear-to-br from-card/80 to-card/40 hover:border-primary/30 ${config.glow}`
+                }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p
-                      className={`text-xs uppercase tracking-[0.2em] ${rarityStyles[relic.rarity] ?? "text-muted-foreground"}`}
-                    >
-                      {relic.rarity} • {relic.slot}
-                    </p>
-                    <h2 className="text-lg font-semibold text-foreground">{relic.name}</h2>
-                    <p className="mt-2 text-sm text-muted-foreground">{relic.description}</p>
-                  </div>
-                  <span className="rounded-full border border-border bg-background/70 px-3 py-1 text-xs text-muted-foreground">
-                    {relic.priceGold} Gold
-                  </span>
-                </div>
-
-                {relic.unlockCondition ? (
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Sealed Condition: {relic.unlockCondition}
-                  </p>
+                {/* Decorative corner */}
+                {relic.rarity === "Legendary" || relic.rarity === "Mythic" ? (
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl" />
                 ) : null}
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="relative flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    {/* Rarity & Slot */}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs font-medium uppercase tracking-[0.15em] ${config.color}`}
+                      >
+                        {config.icon} {relic.rarity}
+                      </span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {slotIcon} {relic.slot}
+                      </span>
+                    </div>
+
+                    {/* Name */}
+                    <h2
+                      className={`mt-2 text-lg font-semibold ${relic.isSealed ? "text-muted-foreground" : "text-foreground"}`}
+                    >
+                      {relic.name}
+                    </h2>
+
+                    {/* Description */}
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {relic.description}
+                    </p>
+
+                    {/* Unlock condition */}
+                    {relic.unlockCondition ? (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>🔒</span>
+                        <span>Sealed: {relic.unlockCondition}</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Price tag */}
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
+                      <span className="text-sm">🪙</span>
+                      <span className="text-sm font-semibold text-amber-300">
+                        {relic.priceGold.toLocaleString()}
+                      </span>
+                    </div>
+                    {relic.isLimited ? (
+                      <span className="text-xs text-pink-400">⏳ Limited</span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-5 flex flex-wrap gap-3">
                   {relic.isSealed ? (
-                    <span className="rounded-md border border-border bg-background/60 px-3 py-1 text-xs text-muted-foreground">
-                      Sealed Relic
+                    <span className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-4 py-2 text-xs text-muted-foreground">
+                      🔒 Sealed Relic
                     </span>
-                  ) : null}
-                  {relic.owned ? (
+                  ) : relic.owned ? (
                     <button
                       type="button"
                       disabled={isBusy || relic.bound}
                       onClick={() => handleBind(relic.id)}
-                      className="rounded-md border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-foreground transition hover:border-primary/70 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                        relic.bound
+                          ? "border border-primary/40 bg-primary/10 text-primary"
+                          : "border border-border/60 bg-background/60 text-foreground hover:border-primary/40 hover:bg-primary/10"
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
                     >
-                      {relic.bound ? "Bound" : "Bind Relic"}
+                      {relic.bound ? "✓ Bound to Avatar" : "Bind Relic"}
                     </button>
                   ) : (
                     <button
                       type="button"
                       disabled={isBusy || !canAcquire || gold < relic.priceGold}
                       onClick={() => handleAcquire(relic.id)}
-                      className="rounded-md bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-lg bg-linear-to-r from-amber-600 to-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:shadow-amber-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Acquire Relic
                     </button>
                   )}
+
+                  {!relic.owned && gold < relic.priceGold && !relic.isSealed ? (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>💰</span>
+                      <span>Need {(relic.priceGold - gold).toLocaleString()} more Gold</span>
+                    </span>
+                  ) : null}
                 </div>
               </div>
             );
           })}
         </section>
+
+        {catalog.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border/40 bg-card/40 py-16 text-center">
+            <span className="text-4xl">🏛️</span>
+            <p className="text-muted-foreground">The Armory awaits your first visit.</p>
+            <p className="text-sm text-muted-foreground">Complete Quests to earn Gold.</p>
+          </div>
+        ) : null}
       </main>
     </div>
   );

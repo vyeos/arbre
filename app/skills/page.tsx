@@ -38,6 +38,17 @@ const branchOrder = [
   "General",
 ];
 
+const branchIcons: Record<string, string> = {
+  Stability: "🛡️",
+  Insight: "👁️",
+  Rewards: "🪙",
+  Combat: "⚔️",
+  Focus: "🎯",
+  Flow: "💨",
+  Utility: "🔧",
+  General: "✨",
+};
+
 const buildBranchAngles = (branches: string[]) => {
   const ordered = [
     ...branchOrder.filter((branch) => branches.includes(branch)),
@@ -62,22 +73,41 @@ const SkillNode = ({
   locked: boolean;
   owned: boolean;
   canBuy: boolean;
+  category: string;
 }>) => (
   <div
-    className={`group relative rounded-2xl border px-3 py-2 text-xs transition ${
+    className={`group relative cursor-pointer rounded-xl border-2 px-4 py-3 text-xs shadow-lg transition-all ${
       data.owned
-        ? "border-primary/60 bg-primary/20 text-foreground"
+        ? "border-primary/60 bg-linear-to-br from-primary/25 to-primary/10 text-foreground shadow-primary/20"
         : data.canBuy
-          ? "border-emerald-400/60 bg-emerald-500/10 text-foreground"
+          ? "animate-pulse border-emerald-400/60 bg-linear-to-br from-emerald-500/20 to-emerald-500/5 text-foreground shadow-emerald-500/20"
           : data.locked
-            ? "border-border/40 bg-background/40 text-muted-foreground grayscale"
-            : "border-border/60 bg-background/80 text-foreground"
+            ? "border-border/30 bg-background/30 text-muted-foreground opacity-60 grayscale"
+            : "border-border/50 bg-linear-to-br from-card/80 to-card/40 text-foreground"
     }`}
   >
-    <div className="font-semibold">{data.label}</div>
-    <div className="text-[10px] text-muted-foreground">Cost: {data.price} Bytes</div>
-    <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg border border-border bg-background/90 px-3 py-2 text-[11px] text-muted-foreground opacity-0 shadow-lg transition group-hover:opacity-100">
-      {data.description || "No Codex entry yet."}
+    {/* Glow effect for purchasable */}
+    {data.canBuy && !data.owned && (
+      <div className="absolute inset-0 -z-10 rounded-xl bg-emerald-500/20 blur-md" />
+    )}
+
+    <div className="flex items-center gap-2">
+      <span className="text-base">{branchIcons[data.category] ?? "✨"}</span>
+      <span className="font-semibold">{data.label}</span>
+    </div>
+    <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+      <span>💠</span>
+      <span>{data.price} Bytes</span>
+      {data.owned && <span className="ml-1 text-primary">✓</span>}
+    </div>
+
+    {/* Tooltip */}
+    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-3 w-56 -translate-x-1/2 rounded-xl border border-border/60 bg-card/95 px-4 py-3 text-[11px] leading-relaxed text-muted-foreground opacity-0 shadow-2xl backdrop-blur-sm transition-opacity group-hover:opacity-100">
+      <p className="mb-1 font-medium text-foreground">{data.label}</p>
+      <p>{data.description || "No Codex entry yet."}</p>
+      {data.canBuy && !data.owned && (
+        <p className="mt-2 text-emerald-400">⚡ Click to bind this Skill</p>
+      )}
     </div>
   </div>
 );
@@ -163,6 +193,7 @@ export default function SkillsPage() {
             locked: !owned,
             owned,
             canBuy,
+            category: skill.category,
           },
           type: "skill",
         };
@@ -194,6 +225,7 @@ export default function SkillsPage() {
           locked: isLocked,
           owned,
           canBuy,
+          category: skill.category,
         },
         type: "skill",
         hidden: !isVisible,
@@ -206,12 +238,16 @@ export default function SkillsPage() {
       const parentId = parentById.get(skill.id);
       if (!parentId) continue;
       const targetHidden = graphNodes.find((node) => node.id === skill.id)?.hidden;
+      const sourceOwned = unlockedIds.has(parentId);
       graphEdges.push({
         id: `${parentId}-${skill.id}`,
         source: parentId,
         target: skill.id,
         type: "smoothstep",
-        style: { stroke: "rgba(148, 163, 184, 0.4)", strokeWidth: 1.2 },
+        style: {
+          stroke: sourceOwned ? "rgba(120, 200, 120, 0.5)" : "rgba(148, 163, 184, 0.3)",
+          strokeWidth: sourceOwned ? 2 : 1.2,
+        },
         hidden: Boolean(targetHidden),
       });
     }
@@ -259,9 +295,59 @@ export default function SkillsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-background via-card to-background text-foreground">
-      <main className="mx-auto flex h-[80vh] w-full max-w-6xl px-6 py-12">
-        <div className="h-full w-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-2xl">
+    <div className="min-h-screen bg-linear-to-b from-background via-card/20 to-background text-foreground">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12">
+        {/* Header */}
+        <header className="relative space-y-4">
+          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-sky-500/10 blur-3xl" />
+
+          <div className="relative flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-1.5">
+              <span className="text-lg">🌳</span>
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-sky-300">
+                Skill Tree
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground">Passive buffs • Active abilities</span>
+          </div>
+
+          <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl">
+            <span className="text-foreground">Bind Skills to </span>
+            <span className="text-sky-400">Shape Your Build</span>
+          </h1>
+
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
+            Spend Bytes to unlock passive buffs and active abilities. Each Skill Branch defines your
+            path. Glowing Skills are ready to bind.
+          </p>
+        </header>
+
+        {/* Bytes Status Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-linear-to-r from-card/60 to-card/40 px-6 py-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-sky-500/40 bg-sky-500/10">
+              <span className="text-2xl">💠</span>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Available Bytes
+              </p>
+              <p className="text-2xl font-bold text-sky-300">{bytes.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>{unlocks.length} Skills Bound</span>
+            <span className="h-4 w-px bg-border/60" />
+            <span>{skills.length} Total Skills</span>
+          </div>
+        </div>
+
+        {/* Skill Tree Visualization */}
+        <div className="relative h-[70vh] w-full overflow-hidden rounded-3xl border border-border/60 bg-linear-to-b from-card/60 to-card/30 shadow-2xl">
+          {/* Corner decorations */}
+          <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-sky-500/5 blur-3xl" />
+
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -273,10 +359,28 @@ export default function SkillsPage() {
             panOnDrag
             zoomOnScroll
             fitView
-            fitViewOptions={{ padding: 0.2 }}
+            fitViewOptions={{ padding: 0.25 }}
           >
-            <Background gap={32} size={1} color="rgba(148, 163, 184, 0.2)" />
+            <Background gap={40} size={1} color="rgba(148, 163, 184, 0.1)" />
           </ReactFlow>
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-primary/60" />
+            <span>Bound Skill</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 animate-pulse rounded-full bg-emerald-500/60" />
+            <span>Ready to Bind</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-border/40" />
+            <span>Locked</span>
+          </div>
+          <span className="text-muted-foreground/60">|</span>
+          <span>Click a glowing Skill to bind it</span>
         </div>
       </main>
     </div>

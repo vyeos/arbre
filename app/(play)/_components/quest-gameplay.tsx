@@ -748,7 +748,7 @@ export default function QuestGameplay() {
               minimap: { enabled: false },
               fontSize: 14,
               scrollBeyondLastLine: false,
-              readOnly: crashed || isReadOnly || skillGateActive,
+              // readOnly: crashed || isReadOnly || skillGateActive,
             }}
           />
         </div>
