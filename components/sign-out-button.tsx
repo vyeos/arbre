@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "./ui/button";
 
 export default function SignOutButton() {
   const router = useRouter();
@@ -35,13 +36,13 @@ export default function SignOutButton() {
   };
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="destructive"
       onClick={handleSignOut}
       disabled={isSigningOut}
-      className="rounded-lg border border-border bg-card/70 px-3 py-2 text-xs font-semibold text-foreground transition hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-70"
+      className="cursor-pointer text-xs font-semibold transition hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {isSigningOut ? "Unbinding..." : "Unbind Sigil"}
-    </button>
+    </Button>
   );
 }

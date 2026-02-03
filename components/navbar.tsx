@@ -122,7 +122,7 @@ export default function Navbar({ user }: { user: User | null }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border/40" />
-                  <DropdownMenuItem asChild>
+                  <DropdownMenuItem asChild className="focus:bg-accent/30">
                     <Link
                       href="/character"
                       className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
@@ -135,11 +135,9 @@ export default function Navbar({ user }: { user: User | null }) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border/40" />
-                  <DropdownMenuItem asChild>
-                    <div className="w-full px-1 py-1">
-                      <SignOutButton />
-                    </div>
-                  </DropdownMenuItem>
+                  <div className="p-1">
+                    <SignOutButton />
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
