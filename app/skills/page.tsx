@@ -5,6 +5,7 @@ import "reactflow/dist/style.css";
 import { useEffect, useMemo, useState } from "react";
 import type { Edge, Node, NodeProps } from "reactflow";
 import ReactFlow, { Background } from "reactflow";
+import { Badge } from "@/components/ui/badge";
 
 type ApiResponse<T> = {
   data: T | null;
@@ -302,12 +303,12 @@ export default function SkillsPage() {
           <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-chart-2/10 blur-3xl" />
 
           <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 rounded-lg border border-chart-2/40 bg-chart-2/10 px-4 py-1.5">
-              <span className="text-lg">🌳</span>
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-chart-2">
+            <Badge className="border border-chart-2/40 bg-chart-2/10 px-4 py-1.5">
+              <span className="mr-2">🌳</span>
+              <span className="text-xs font-medium uppercase tracking-[0.3em] text-chart-2">
                 Skill Tree
               </span>
-            </div>
+            </Badge>
             <span className="text-xs text-muted-foreground">Passive buffs • Active abilities</span>
           </div>
 

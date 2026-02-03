@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 
 type RelicCatalogEntry = {
@@ -125,12 +126,12 @@ export default function ArmoryPage() {
           <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-chart-1/10 blur-3xl" />
 
           <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 rounded-lg border border-chart-1/40 bg-chart-1/10 px-4 py-1.5">
-              <span className="text-lg">🛡️</span>
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-chart-1">
+            <Badge className="border border-chart-1/40 bg-chart-1/10 px-4 py-1.5">
+              <span className=" mr-2">🛡️</span>
+              <span className="text-xs font-medium uppercase tracking-[0.3em] text-chart-1">
                 Relic Armory
               </span>
-            </div>
+            </Badge>
             <span className="text-xs text-muted-foreground">Cosmetics • No stat boosts</span>
           </div>
 

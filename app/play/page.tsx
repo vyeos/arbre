@@ -13,10 +13,12 @@ export default function PlayPage() {
           <div className="relative flex flex-wrap items-center gap-4">
             <Badge
               variant="outline"
-              className="border-primary/40 px-4 py-1.5 text-xs uppercase tracking-[0.3em] text-primary"
+              className="border-primary/40 bg-primary/10 px-4 py-1.5 text-xs uppercase tracking-[0.3em] text-primary"
             >
-              <span className="mr-2 h-2 w-2 animate-pulse rounded-full bg-primary" />
-              Quest Arena
+              <span className=" mr-2">⚔️️</span>
+              <span className="text-xs font-medium uppercase tracking-[0.3em] text-primary">
+                Quest Arena
+              </span>
             </Badge>
             <span className="text-xs text-muted-foreground">⚔️ Live Encounter Zone</span>
           </div>
