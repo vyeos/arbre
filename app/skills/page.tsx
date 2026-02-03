@@ -78,9 +78,9 @@ const SkillNode = ({
   <div
     className={`group relative cursor-pointer rounded-xl border-2 px-4 py-3 text-xs shadow-lg transition-all ${
       data.owned
-        ? "border-primary/60 bg-linear-to-br from-primary/25 to-primary/10 text-foreground shadow-primary/20"
+        ? "border-chart-2/60 bg-linear-to-br from-chart-2/25 to-chart-2/10 text-foreground shadow-chart-2/20"
         : data.canBuy
-          ? "animate-pulse border-primary/60 bg-linear-to-br from-primary/20 to-primary/5 text-foreground shadow-primary/20"
+          ? "border-primary/60 bg-linear-to-br from-primary/20 to-primary/5 text-foreground shadow-primary/20"
           : data.locked
             ? "border-border/30 bg-background/30 text-muted-foreground opacity-60 grayscale"
             : "border-border/50 bg-linear-to-br from-card/80 to-card/40 text-foreground"
@@ -368,11 +368,11 @@ export default function SkillsPage() {
         {/* Legend */}
         <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-primary/60" />
+            <div className="h-3 w-3 rounded-full bg-chart-2/60" />
             <span>Bound Skill</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 animate-pulse rounded-full bg-primary/60" />
+            <div className="h-3 w-3 rounded-full bg-primary/60" />
             <span>Ready to Bind</span>
           </div>
           <div className="flex items-center gap-2">
