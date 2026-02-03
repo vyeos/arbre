@@ -43,6 +43,12 @@ type QuestStateResponse = {
   states: QuestStateEntry[];
 };
 
+type ExecutionPlan = {
+  tests: ExecutionTestCase[];
+  submitTests?: ExecutionTestCase[];
+  buildCode: (code: string) => string;
+};
+
 type ApiResponse<T> = {
   data: T | null;
   error: { code: string; message: string } | null;
@@ -61,6 +67,52 @@ const normalizeLanguage = (language: string): ExecutionLanguage => {
   if (key === "java") return "java";
   if (key === "go") return "go";
   return "typescript";
+};
+
+const coerceTestCases = (value: unknown): ExecutionTestCase[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const payload = item as Record<string, unknown>;
+      const input = payload.input;
+      const expectedOutput = payload.expectedOutput;
+      if (typeof input !== "string" || typeof expectedOutput !== "string") return null;
+      const id = typeof payload.id === "string" ? payload.id : `t${index + 1}`;
+      const hidden = typeof payload.hidden === "boolean" ? payload.hidden : undefined;
+      return hidden !== undefined
+        ? { id, input, expectedOutput, hidden }
+        : { id, input, expectedOutput };
+    })
+    .filter((item): item is ExecutionTestCase => Boolean(item));
+};
+
+const resolveExecutionPlan = (detail: QuestDetail): ExecutionPlan | null => {
+  const constraints = (detail.constraints ?? {}) as Record<string, unknown>;
+  const execution =
+    (constraints.execution as Record<string, unknown> | undefined) ??
+    (constraints.tests || constraints.submitTests || constraints.harness ? constraints : null);
+
+  if (execution) {
+    const tests = coerceTestCases(execution.tests);
+    if (tests.length) {
+      const submitTests = coerceTestCases(execution.submitTests);
+      const harness = typeof execution.harness === "string" ? execution.harness : "";
+      return {
+        tests,
+        submitTests: submitTests.length ? submitTests : undefined,
+        buildCode: (code: string) => (harness ? `${code}\n${harness}\n` : code),
+      };
+    }
+  }
+
+  const legacy = questRunners[detail.slug];
+  if (!legacy) return null;
+  return {
+    tests: legacy.tests,
+    submitTests: legacy.submitTests,
+    buildCode: legacy.buildCode,
+  };
 };
 
 const questRunners: Record<
@@ -369,9 +421,9 @@ export default function QuestGameplay() {
     appendLog("Channeling runes...", "neutral");
 
     await new Promise((resolve) => setTimeout(resolve, 800));
-    const runner = questRunners[questDetail.slug];
-    if (!runner) {
-      appendLog("No trial script bound for this quest.", "danger");
+    const plan = resolveExecutionPlan(questDetail);
+    if (!plan) {
+      appendLog("No trial script bound in this quest's Codex.", "danger");
       setIsRunning(false);
       return;
     }
@@ -388,8 +440,8 @@ export default function QuestGameplay() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: normalizeLanguage(questDetail.language),
-          code: runner.buildCode(preparedCode),
-          tests: runner.tests,
+          code: plan.buildCode(preparedCode),
+          tests: plan.tests,
           timeoutMs: 2000,
         }),
       });
@@ -441,9 +493,9 @@ export default function QuestGameplay() {
     setIsRunning(true);
     appendLog("Submitting fix to the Tribunal...", "neutral");
 
-    const runner = questRunners[questDetail.slug];
-    if (!runner) {
-      appendLog("No trial script bound for this quest.", "danger");
+    const plan = resolveExecutionPlan(questDetail);
+    if (!plan) {
+      appendLog("No trial script bound in this quest's Codex.", "danger");
       setIsRunning(false);
       return;
     }
@@ -460,8 +512,8 @@ export default function QuestGameplay() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: normalizeLanguage(questDetail.language),
-          code: runner.buildCode(preparedCode),
-          tests: runner.submitTests ?? runner.tests,
+          code: plan.buildCode(preparedCode),
+          tests: plan.submitTests ?? plan.tests,
           timeoutMs: 2000,
         }),
       });

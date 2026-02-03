@@ -23,7 +23,10 @@ async function main() {
         language: challenge.language,
         bugTier: challenge.bugTier,
         starterCode: challenge.starterCode,
-        constraints: challenge.constraints,
+        constraints: {
+          ...challenge.constraints,
+          ...(challenge.execution ? { execution: challenge.execution } : {}),
+        },
         rewards: challenge.rewards,
         serverHealthDrainRate: challenge.serverHealthDrainRate,
         codexLink: challenge.codexLink ?? null,

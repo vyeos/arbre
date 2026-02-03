@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import type { TSchema } from "@sinclair/typebox";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 import { db } from "@/db";
@@ -317,7 +317,7 @@ const loadOrderedChallenges = async () =>
       createdAt: schema.challenges.createdAt,
     })
     .from(schema.challenges)
-    .orderBy(schema.challenges.createdAt, schema.challenges.id);
+    .orderBy(asc(schema.challenges.createdAt), schema.challenges.id);
 
 const ensureQuestStates = async (userId: string) => {
   const challenges = await loadOrderedChallenges();
@@ -457,7 +457,8 @@ export const app = new Elysia({ prefix: "/api/elysia" })
           codexLink: schema.challenges.codexLink,
           createdAt: schema.challenges.createdAt,
         })
-        .from(schema.challenges);
+        .from(schema.challenges)
+        .orderBy(asc(schema.challenges.createdAt), schema.challenges.id);
 
       const normalized = rows.map((row) => ({
         ...row,
