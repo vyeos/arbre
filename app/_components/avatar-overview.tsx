@@ -297,60 +297,95 @@ export default function CharacterOverview() {
 
           {/* Preview Panel */}
           <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-b from-card/80 to-card/40 p-6 shadow-xl">
-            <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-chart-1/10 blur-2xl" />
+            <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-10 -right-10 h-24 w-24 rounded-full bg-chart-1/10 blur-2xl" />
 
             <div className="relative">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                <span>👤</span>
-                <span>Vessel Preview</span>
+              <div className="flex items-center justify-between">
+                <div className="rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-[10px] uppercase tracking-wider text-accent">
+                  Vessel Preview
+                </div>
               </div>
 
-              <div className="mt-4 flex flex-col gap-6 rounded-xl border border-border/40 bg-background/40 p-6">
-                {/* Pixel Avatar */}
-                <div className="flex items-center justify-center">
-                  <div className="rounded-2xl border border-border/60 bg-linear-to-b from-background/90 to-background/70 p-5 shadow-lg">
+              {/* Pixel Avatar with enhanced container */}
+              <div className="mt-5 flex flex-col items-center">
+                <div className="group relative">
+                  {/* Glow ring */}
+                  <div className="absolute -inset-4 rounded-3xl bg-linear-to-br from-accent/30 via-transparent to-chart-1/30 opacity-50 blur-2xl transition-opacity group-hover:opacity-80" />
+
+                  {/* Avatar frame */}
+                  <div className="relative rounded-2xl border-2 border-accent/30 bg-linear-to-b from-background via-background/95 to-background/80 p-5 shadow-2xl shadow-accent/10 transition-all group-hover:border-accent/50 group-hover:shadow-accent/20">
+                    {/* Inner decorative frame */}
+                    <div className="absolute inset-2 rounded-xl border border-border/20" />
+
+                    {/* Pixel grid with improved proportions - 16x20 grid for better character shape */}
                     <div
-                      className="grid h-44 w-36"
+                      className="relative grid"
                       style={{
-                        gridTemplateColumns: "repeat(12, 1fr)",
-                        gridTemplateRows: "repeat(16, 1fr)",
-                        gap: "2px",
+                        gridTemplateColumns: "repeat(16, 12px)",
+                        gridTemplateRows: "repeat(20, 12px)",
+                        gap: "1px",
                       }}
                     >
                       {[
-                        // Head + hair (rows 1-4)
-                        0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-                        1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0,
-                        // Eyes row
-                        0, 1, 2, 2, 3, 2, 2, 3, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0,
-                        // Neck
-                        0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0,
-                        // Torso
-                        0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0,
-                        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0,
-                        // Belt
-                        0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0,
-                        // Legs
-                        0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0,
-                        0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0,
-                        // Boots
-                        0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 4, 0, 0,
+                        // Row 1-2: Hair top
+                        0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+                        1, 1, 1, 0, 0, 0, 0,
+                        // Row 3-4: Hair sides + forehead
+                        0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2,
+                        2, 2, 1, 1, 1, 0, 0,
+                        // Row 5: Forehead
+                        0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 0,
+                        // Row 6: Eyes row
+                        0, 0, 1, 2, 2, 3, 2, 2, 2, 2, 3, 2, 2, 1, 0, 0,
+                        // Row 7: Under eyes
+                        0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0,
+                        // Row 8: Nose/mouth area
+                        0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0,
+                        // Row 9: Chin
+                        0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0,
+                        // Row 10: Neck
+                        0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0,
+                        // Row 11: Shoulders
+                        0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0,
+                        // Row 12-13: Upper body
+                        0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4,
+                        4, 4, 4, 4, 4, 4, 0,
+                        // Row 14: Belt area
+                        0, 0, 4, 4, 4, 5, 5, 5, 5, 5, 5, 4, 4, 4, 0, 0,
+                        // Row 15-16: Lower body
+                        0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0,
+                        4, 4, 4, 4, 0, 0, 0,
+                        // Row 17-18: Legs
+                        0, 0, 0, 4, 4, 4, 4, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0,
+                        4, 4, 4, 4, 0, 0, 0,
+                        // Row 19-20: Boots
+                        0, 0, 0, 5, 5, 5, 5, 0, 0, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 0, 0,
+                        5, 5, 5, 5, 5, 0, 0,
                       ].map((cell, index) => {
-                        const color =
-                          cell === 1
-                            ? pixelColors.hair
-                            : cell === 2
-                              ? pixelColors.skin
-                              : cell === 3
-                                ? pixelColors.eyes
-                                : cell === 4
-                                  ? pixelColors.outfit
-                                  : "transparent";
+                        let color = "transparent";
+                        let shadow = "";
+                        if (cell === 1) {
+                          color = pixelColors.hair;
+                        } else if (cell === 2) {
+                          color = pixelColors.skin;
+                        } else if (cell === 3) {
+                          color = pixelColors.eyes;
+                          shadow = `0 0 4px ${pixelColors.eyes}`;
+                        } else if (cell === 4) {
+                          color = pixelColors.outfit;
+                        } else if (cell === 5) {
+                          // Belt/boots - darker version of outfit
+                          color = "#111827";
+                        }
                         return (
                           <div
                             key={index}
-                            className="transition-colors duration-300"
-                            style={{ backgroundColor: color }}
+                            className="rounded-xs transition-all duration-300"
+                            style={{
+                              backgroundColor: color,
+                              boxShadow: shadow,
+                            }}
                           />
                         );
                       })}
@@ -358,41 +393,56 @@ export default function CharacterOverview() {
                   </div>
                 </div>
 
-                {/* Stats Display */}
-                <div className="grid gap-3">
-                  {[
-                    { label: "Body", value: preview.bodyType, icon: "🧍" },
-                    { label: "Skin", value: preview.skinTone, icon: "🎨" },
-                    {
-                      label: "Hair",
-                      value: `${preview.hairStyle} • ${preview.hairColor}`,
-                      icon: "💇",
-                    },
-                    { label: "Eyes", value: preview.eyeStyle, icon: "👁️" },
-                  ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="flex items-center justify-between rounded-lg border border-border/30 bg-background/30 px-4 py-2.5 text-sm"
-                    >
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <span>{stat.icon}</span>
-                        <span>{stat.label}</span>
-                      </span>
-                      <span className="font-medium text-foreground">{stat.value}</span>
-                    </div>
-                  ))}
+                {/* Character name plate */}
+                <div className="mt-4 text-center">
+                  <p className="font-serif text-lg font-semibold text-foreground">
+                    {preview.bodyType} Vessel
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {preview.skinTone} • {preview.hairStyle} •{" "}
+                    {preview.eyeStyle === "None" ? "Mysterious" : preview.eyeStyle} Gaze
+                  </p>
                 </div>
               </div>
 
-              {/* Relic Slots Preview */}
-              <div className="mt-6 rounded-xl border border-chart-1/20 bg-chart-1/5 p-4">
-                <div className="flex items-center gap-2 text-xs text-chart-1">
-                  <span>💎</span>
-                  <span>Relic Slots Available</span>
+              {/* Stats Display - Compact horizontal */}
+              <div className="mt-6 grid grid-cols-2 gap-2">
+                {[
+                  { label: "Body", value: preview.bodyType, icon: "🧍" },
+                  { label: "Skin", value: preview.skinTone, icon: "🎨" },
+                  { label: "Hair", value: preview.hairColor, icon: "💇" },
+                  { label: "Eyes", value: preview.eyeStyle, icon: "👁️" },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="flex items-center gap-2 rounded-lg border border-border/30 bg-background/40 px-3 py-2 text-xs"
+                  >
+                    <span>{stat.icon}</span>
+                    <span className="text-muted-foreground">{stat.label}:</span>
+                    <span className="font-medium text-foreground">{stat.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Relic Slots Preview - Enhanced */}
+              <div className="mt-5 rounded-xl border border-chart-1/30 bg-linear-to-r from-chart-1/10 to-chart-1/5 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-medium text-chart-1">
+                    <span>💎</span>
+                    <span>9 Relic Slots Available</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Cosmetic Only</span>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Visit the Armory to bind cosmetic Relics to your Avatar.
-                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {["👑", "🎭", "🧥", "🧤", "⚔️", "🦇", "🌌", "🖼️", "✨"].map((slot, i) => (
+                    <div
+                      key={i}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/40 bg-background/50 text-sm opacity-50 transition-opacity hover:opacity-100"
+                    >
+                      {slot}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
