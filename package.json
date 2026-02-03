@@ -18,6 +18,7 @@
     "db:seed": "bun run scripts/seed.ts"
   },
   "dependencies": {
+    "@e2b/code-interpreter": "^2.3.3",
     "@elysiajs/eden": "^1.4.6",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-form": "^1.28.0",

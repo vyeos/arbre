@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { spawn } from "child_process";
+import { Sandbox } from "@e2b/code-interpreter";
 
 import type {
   ExecutionLanguage,
@@ -17,6 +18,18 @@ const DEFAULT_MEMORY_LIMIT = "512m";
 const DEFAULT_CPU_LIMIT = "1";
 
 const RUNNER_IMAGE = process.env.SANDBOX_RUNNER_IMAGE ?? "arbre-runner:latest";
+const E2B_TEMPLATE = process.env.E2B_TEMPLATE ?? "base";
+const E2B_TIMEOUT_MS = Number(process.env.E2B_SANDBOX_TIMEOUT_MS ?? "60000");
+const E2B_WORKDIR = process.env.E2B_WORKDIR ?? "/workspace";
+const E2B_SUPPORTED_LANGUAGES: ExecutionLanguage[] = [
+  "javascript",
+  "typescript",
+  "python",
+  "c",
+  "cpp",
+  "java",
+  "go",
+];
 
 const normalizeOutput = (value: string) => value.replace(/\r\n/g, "\n").trimEnd();
 
@@ -83,6 +96,82 @@ const buildCommands = (language: ExecutionLanguage, fileName: string) => {
   }
 };
 
+const buildStdinCommand = (command: string, stdin?: string) => {
+  if (!stdin) return command;
+  const encoded = Buffer.from(stdin, "utf8").toString("base64");
+  return `bash -lc "printf %s ${encoded} | base64 -d | ${command}"`;
+};
+
+const runE2BCommand = async ({
+  sandbox,
+  command,
+  stdin,
+}: {
+  sandbox: Sandbox;
+  command: string;
+  stdin?: string;
+}) => {
+  const result = await sandbox.commands.run(buildStdinCommand(command, stdin));
+  return {
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+    exitCode: typeof result.exitCode === "number" ? result.exitCode : null,
+    timedOut: false,
+  };
+};
+
+const runLocalCommand = async ({
+  workdir,
+  command,
+  stdin,
+  timeoutMs,
+}: {
+  workdir: string;
+  command: string;
+  stdin?: string;
+  timeoutMs: number;
+}) => {
+  return new Promise<{
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    timedOut: boolean;
+  }>((resolve) => {
+    const child = spawn("bash", ["-lc", command], { stdio: "pipe", cwd: workdir });
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+
+    if (stdin) {
+      child.stdin.write(stdin);
+    }
+    child.stdin.end();
+
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, timeoutMs);
+
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      const message = error instanceof Error ? error.message : "Local spawn failed.";
+      resolve({ stdout, stderr: message, exitCode: null, timedOut: false });
+    });
+
+    child.on("close", (exitCode) => {
+      clearTimeout(timeout);
+      resolve({ stdout, stderr, exitCode, timedOut });
+    });
+  });
+};
+
 const runDockerCommand = async ({
   workdir,
   command,
@@ -94,6 +183,8 @@ const runDockerCommand = async ({
   stdin?: string;
   timeoutMs: number;
 }) => {
+  const allowLocal =
+    process.env.SANDBOX_ALLOW_LOCAL === "true" || process.env.NODE_ENV !== "production";
   const args = [
     "run",
     "--rm",
@@ -150,14 +241,24 @@ const runDockerCommand = async ({
       child.kill("SIGKILL");
     }, timeoutMs);
 
-    child.on("error", (error) => {
+    child.on("error", async (error) => {
       clearTimeout(timeout);
+      if (allowLocal) {
+        const localResult = await runLocalCommand({ workdir, command, stdin, timeoutMs });
+        resolve(localResult);
+        return;
+      }
       const message = error instanceof Error ? error.message : "Docker spawn failed.";
       resolve({ stdout, stderr: message, exitCode: null, timedOut: false });
     });
 
-    child.on("close", (exitCode) => {
+    child.on("close", async (exitCode) => {
       clearTimeout(timeout);
+      if (exitCode === null && allowLocal) {
+        const localResult = await runLocalCommand({ workdir, command, stdin, timeoutMs });
+        resolve(localResult);
+        return;
+      }
       resolve({ stdout, stderr, exitCode, timedOut });
     });
   });
@@ -206,6 +307,10 @@ const runTestCase = async (
 };
 
 export const executeInSandbox = async (request: ExecutionRequest): Promise<ExecutionResult> => {
+  if (process.env.E2B_API_KEY) {
+    return executeInE2B(request);
+  }
+
   const workdir = await buildTempDir();
   const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const fileName = buildFileName(request.language);
@@ -294,5 +399,116 @@ export const executeInSandbox = async (request: ExecutionRequest): Promise<Execu
     };
   } finally {
     await rm(workdir, { recursive: true, force: true }).catch(() => undefined);
+  }
+};
+
+const executeInE2B = async (request: ExecutionRequest): Promise<ExecutionResult> => {
+  const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const fileName = buildFileName(request.language);
+  const commands = buildCommands(request.language, fileName);
+
+  const summary = {
+    status: "internal_error" as ExecutionStatus,
+    tests: [] as TestResult[],
+    stdout: "",
+    stderr: "",
+    durationMs: 0,
+  };
+
+  if (!E2B_SUPPORTED_LANGUAGES.includes(request.language)) {
+    return {
+      ...summary,
+      status: "compile_error",
+      stderr: "Unsupported language in E2B template.",
+    };
+  }
+
+  const sandbox = await Sandbox.create(E2B_TEMPLATE, {
+    timeoutMs: Math.max(timeoutMs * 2, E2B_TIMEOUT_MS),
+  });
+
+  try {
+    const workdir = E2B_WORKDIR;
+    await sandbox.files.write(`${workdir}/${fileName}`, request.code);
+
+    let compileExitCode: number | null = 0;
+    let compileTimedOut = false;
+    let compileStdout = "";
+    let compileStderr = "";
+
+    if (commands.compile) {
+      const compileResult = await runE2BCommand({
+        sandbox,
+        command: `cd ${workdir} && ${commands.compile}`,
+      });
+      compileExitCode = compileResult.exitCode;
+      compileTimedOut = compileResult.timedOut;
+      compileStdout = compileResult.stdout;
+      compileStderr = compileResult.stderr;
+    }
+
+    if (compileTimedOut || (compileExitCode && compileExitCode !== 0)) {
+      return {
+        status: compileTimedOut ? "timeout" : "compile_error",
+        tests: [],
+        stdout: normalizeOutput(compileStdout),
+        stderr: normalizeOutput(compileStderr),
+        durationMs: 0,
+      };
+    }
+
+    const results: TestResult[] = [];
+    let runStdout = "";
+    let runStderr = "";
+    let runExitCode: number | null = 0;
+    let runTimedOut = false;
+
+    for (const test of request.tests) {
+      const testResult = await runE2BCommand({
+        sandbox,
+        command: `cd ${workdir} && ${commands.run}`,
+        stdin: test.input,
+      });
+      const durationMs = 0;
+      runStdout = testResult.stdout;
+      runStderr = testResult.stderr;
+      runExitCode = testResult.exitCode;
+      runTimedOut = testResult.timedOut;
+      results.push({
+        id: test.id,
+        passed:
+          !runTimedOut &&
+          runExitCode === 0 &&
+          normalizeOutput(runStdout) === normalizeOutput(test.expectedOutput),
+        actualOutput: normalizeOutput(runStdout),
+        expectedOutput: normalizeOutput(test.expectedOutput),
+        durationMs,
+      });
+
+      if (runTimedOut) {
+        break;
+      }
+    }
+
+    const status = deriveStatus(compileExitCode, compileTimedOut, runExitCode, runTimedOut);
+    const finalStatus =
+      status === "passed" && results.some((result) => !result.passed) ? "failed" : status;
+
+    return {
+      status: finalStatus,
+      tests: results,
+      stdout: normalizeOutput(runStdout),
+      stderr: normalizeOutput(runStderr),
+      durationMs: results.reduce((total, result) => total + result.durationMs, 0),
+    };
+  } catch (error) {
+    return {
+      ...summary,
+      stderr: normalizeOutput(String(error)),
+      stdout: "",
+      durationMs: 0,
+    };
+  } finally {
+    await sandbox.kill().catch(() => undefined);
   }
 };
