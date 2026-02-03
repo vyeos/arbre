@@ -74,7 +74,7 @@ export default function CurrencyBadge({
         Commits: <span className="font-semibold text-foreground">{wallet.commits}</span>
       </span>
       <span>
-        Gold: <span className="font-semibold text-amber-300">{wallet.gold}</span>
+        Gold: <span className="font-semibold text-chart-1">{wallet.gold}</span>
       </span>
     </div>
   );

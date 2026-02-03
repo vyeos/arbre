@@ -80,7 +80,7 @@ const SkillNode = ({
       data.owned
         ? "border-primary/60 bg-linear-to-br from-primary/25 to-primary/10 text-foreground shadow-primary/20"
         : data.canBuy
-          ? "animate-pulse border-emerald-400/60 bg-linear-to-br from-emerald-500/20 to-emerald-500/5 text-foreground shadow-emerald-500/20"
+          ? "animate-pulse border-primary/60 bg-linear-to-br from-primary/20 to-primary/5 text-foreground shadow-primary/20"
           : data.locked
             ? "border-border/30 bg-background/30 text-muted-foreground opacity-60 grayscale"
             : "border-border/50 bg-linear-to-br from-card/80 to-card/40 text-foreground"
@@ -88,7 +88,7 @@ const SkillNode = ({
   >
     {/* Glow effect for purchasable */}
     {data.canBuy && !data.owned && (
-      <div className="absolute inset-0 -z-10 rounded-xl bg-emerald-500/20 blur-md" />
+      <div className="absolute inset-0 -z-10 rounded-xl bg-primary/20 blur-md" />
     )}
 
     <div className="flex items-center gap-2">
@@ -106,7 +106,7 @@ const SkillNode = ({
       <p className="mb-1 font-medium text-foreground">{data.label}</p>
       <p>{data.description || "No Codex entry yet."}</p>
       {data.canBuy && !data.owned && (
-        <p className="mt-2 text-emerald-400">⚡ Click to bind this Skill</p>
+        <p className="mt-2 text-primary">⚡ Click to bind this Skill</p>
       )}
     </div>
   </div>
@@ -299,12 +299,12 @@ export default function SkillsPage() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12">
         {/* Header */}
         <header className="relative space-y-4">
-          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-sky-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-chart-2/10 blur-3xl" />
 
           <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-chart-2/40 bg-chart-2/10 px-4 py-1.5">
               <span className="text-lg">🌳</span>
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-sky-300">
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-chart-2">
                 Skill Tree
               </span>
             </div>
@@ -313,7 +313,7 @@ export default function SkillsPage() {
 
           <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl">
             <span className="text-foreground">Bind Skills to </span>
-            <span className="text-sky-400">Shape Your Build</span>
+            <span className="text-chart-2">Shape Your Build</span>
           </h1>
 
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
@@ -325,14 +325,14 @@ export default function SkillsPage() {
         {/* Bytes Status Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-linear-to-r from-card/60 to-card/40 px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-sky-500/40 bg-sky-500/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-chart-2/40 bg-chart-2/10">
               <span className="text-2xl">💠</span>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Available Bytes
               </p>
-              <p className="text-2xl font-bold text-sky-300">{bytes.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-chart-2">{bytes.toLocaleString()}</p>
             </div>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -346,7 +346,7 @@ export default function SkillsPage() {
         <div className="relative h-[70vh] w-full overflow-hidden rounded-3xl border border-border/60 bg-linear-to-b from-card/60 to-card/30 shadow-2xl">
           {/* Corner decorations */}
           <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-sky-500/5 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-chart-2/5 blur-3xl" />
 
           <ReactFlow
             nodes={nodes}
@@ -372,7 +372,7 @@ export default function SkillsPage() {
             <span>Bound Skill</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 animate-pulse rounded-full bg-emerald-500/60" />
+            <div className="h-3 w-3 animate-pulse rounded-full bg-primary/60" />
             <span>Ready to Bind</span>
           </div>
           <div className="flex items-center gap-2">

@@ -29,12 +29,12 @@ type CatalogResponse = {
 };
 
 const rarityConfig: Record<string, { color: string; glow: string; icon: string }> = {
-  Common: { color: "text-slate-400", glow: "", icon: "◆" },
-  Uncommon: { color: "text-emerald-400", glow: "shadow-emerald-500/10", icon: "◆" },
-  Rare: { color: "text-sky-400", glow: "shadow-sky-500/10", icon: "◆◆" },
-  Epic: { color: "text-purple-400", glow: "shadow-purple-500/20", icon: "◆◆◆" },
-  Legendary: { color: "text-amber-400", glow: "shadow-amber-500/20", icon: "★" },
-  Mythic: { color: "text-pink-400", glow: "shadow-pink-500/30", icon: "✦" },
+  Common: { color: "text-muted", glow: "", icon: "◆" },
+  Uncommon: { color: "text-primary", glow: "shadow-primary/10", icon: "◆" },
+  Rare: { color: "text-chart-2", glow: "shadow-chart-2/10", icon: "◆◆" },
+  Epic: { color: "text-accent", glow: "shadow-accent/20", icon: "◆◆◆" },
+  Legendary: { color: "text-chart-1", glow: "shadow-chart-1/20", icon: "★" },
+  Mythic: { color: "text-chart-3", glow: "shadow-chart-3/30", icon: "✦" },
 };
 
 const slotIcons: Record<string, string> = {
@@ -122,12 +122,12 @@ export default function ArmoryPage() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12">
         {/* Header */}
         <header className="relative space-y-4">
-          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-chart-1/10 blur-3xl" />
 
           <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-chart-1/40 bg-chart-1/10 px-4 py-1.5">
               <span className="text-lg">🛡️</span>
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-amber-300">
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-chart-1">
                 Relic Armory
               </span>
             </div>
@@ -136,7 +136,7 @@ export default function ArmoryPage() {
 
           <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl">
             <span className="text-foreground">Acquire and Bind </span>
-            <span className="text-amber-400">Legendary Relics</span>
+            <span className="text-chart-1">Legendary Relics</span>
           </h1>
 
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
@@ -148,12 +148,12 @@ export default function ArmoryPage() {
         {/* Vault Status */}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-linear-to-r from-card/60 to-card/40 px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-amber-500/40 bg-amber-500/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-chart-1/40 bg-chart-1/10">
               <span className="text-2xl">🪙</span>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Vault Gold</p>
-              <p className="text-2xl font-bold text-amber-300">{gold.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-chart-1">{gold.toLocaleString()}</p>
             </div>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -190,7 +190,7 @@ export default function ArmoryPage() {
               >
                 {/* Decorative corner */}
                 {relic.rarity === "Legendary" || relic.rarity === "Mythic" ? (
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-chart-1/10 blur-2xl" />
                 ) : null}
 
                 <div className="relative flex items-start justify-between gap-4">
@@ -231,14 +231,14 @@ export default function ArmoryPage() {
 
                   {/* Price tag */}
                   <div className="flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
+                    <div className="flex items-center gap-1.5 rounded-lg border border-chart-1/30 bg-chart-1/10 px-3 py-1.5">
                       <span className="text-sm">🪙</span>
-                      <span className="text-sm font-semibold text-amber-300">
+                      <span className="text-sm font-semibold text-chart-1">
                         {relic.priceGold.toLocaleString()}
                       </span>
                     </div>
                     {relic.isLimited ? (
-                      <span className="text-xs text-pink-400">⏳ Limited</span>
+                      <span className="text-xs text-chart-3">⏳ Limited</span>
                     ) : null}
                   </div>
                 </div>
@@ -267,7 +267,7 @@ export default function ArmoryPage() {
                       type="button"
                       disabled={isBusy || !canAcquire || gold < relic.priceGold}
                       onClick={() => handleAcquire(relic.id)}
-                      className="rounded-lg bg-linear-to-r from-amber-600 to-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:shadow-amber-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-lg bg-linear-to-r from-chart-1 to-chart-1/80 px-5 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-chart-1/20 transition hover:shadow-chart-1/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Acquire Relic
                     </button>

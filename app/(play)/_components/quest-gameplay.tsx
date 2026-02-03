@@ -631,7 +631,7 @@ export default function QuestGameplay() {
           </div>
         ) : null}
         {rewardBanner ? (
-          <div className="absolute inset-x-6 top-6 z-10 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200 shadow-lg">
+          <div className="absolute inset-x-6 top-6 z-10 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3 text-xs text-primary shadow-lg">
             <span className="font-semibold">Quest Rewards:</span> +{rewardBanner.bytes} Bytes, +
             {rewardBanner.focus} Focus, +{rewardBanner.commits} Commits
             {rewardBanner.gold ? `, +${rewardBanner.gold} Gold` : ""}
@@ -655,7 +655,7 @@ export default function QuestGameplay() {
                     status === "critical"
                       ? "bg-destructive"
                       : status === "warning"
-                        ? "bg-amber-400"
+                        ? "bg-chart-1"
                         : "bg-primary"
                   }`}
                   style={{ width: `${health}%` }}
@@ -707,7 +707,7 @@ export default function QuestGameplay() {
               Commits: <span className="font-semibold text-foreground">{wallet.commits}</span>
             </div>
             <div className="rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground">
-              Gold: <span className="font-semibold text-amber-300">{wallet.gold}</span>
+              Gold: <span className="font-semibold text-chart-1">{wallet.gold}</span>
             </div>
             {questDetail.codexLink ? (
               <a
@@ -780,7 +780,7 @@ export default function QuestGameplay() {
             type="button"
             onClick={handleSkip}
             disabled={isRunning || crashed || !isPlayable || wallet.bytes < skipCost}
-            className="rounded-lg border border-amber-400/60 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg border border-chart-1/60 bg-chart-1/10 px-4 py-2 text-sm font-semibold text-chart-1 transition hover:border-chart-1 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Skip Quest ({skipCost} Bytes)
           </button>
@@ -814,7 +814,7 @@ export default function QuestGameplay() {
               key={log.id}
               className={`rounded-lg border px-3 py-2 text-xs ${
                 log.tone === "success"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                  ? "border-primary/40 bg-primary/10 text-primary"
                   : log.tone === "danger"
                     ? "border-destructive/40 bg-destructive/10 text-destructive"
                     : "border-border bg-background/70 text-muted-foreground"

@@ -87,7 +87,7 @@ export default function Navbar({ user }: { user: User | null }) {
               {user.role === "admin" && (
                 <Link
                   href="/admin"
-                  className="hidden items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 transition hover:border-amber-500/50 hover:bg-amber-500/15 sm:flex"
+                  className="hidden items-center gap-1.5 rounded-lg border border-chart-1/30 bg-chart-1/10 px-3 py-1.5 text-xs font-semibold text-chart-1 transition hover:border-chart-1/50 hover:bg-chart-1/15 sm:flex"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Admin Sanctum</span>
@@ -158,15 +158,15 @@ export default function Navbar({ user }: { user: User | null }) {
                 href="/login"
                 className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/50 px-4 py-2 text-xs font-semibold text-foreground transition hover:border-primary/40 hover:bg-card/80"
               >
-                <span>🚪</span>
-                <span>Enter Gate</span>
+                <span>🛡️</span>
+                <span>Forge Avatar</span>
               </Link>
               <Link
                 href="/signup"
-                className="hidden items-center gap-1.5 rounded-lg bg-linear-to-r from-emerald-600 to-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:shadow-emerald-500/30 sm:flex"
+                className="hidden items-center gap-1.5 rounded-lg bg-linear-to-r from-primary to-primary/80 px-4 py-2 text-xs font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:shadow-primary/30 sm:flex"
               >
-                <span>✨</span>
-                <span>Forge Avatar</span>
+                <span>🚪</span>
+                <span>Enter Gate</span>
               </Link>
             </>
           )}
@@ -240,7 +240,7 @@ export default function Navbar({ user }: { user: User | null }) {
               <Link
                 href="/admin"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300 transition hover:border-amber-500/50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-chart-1/30 bg-chart-1/10 px-4 py-3 text-sm font-semibold text-chart-1 transition hover:border-chart-1/50"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Admin Sanctum</span>

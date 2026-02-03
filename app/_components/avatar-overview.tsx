@@ -181,12 +181,12 @@ export default function CharacterOverview() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
         {/* Header */}
         <header className="relative space-y-4">
-          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-accent/10 blur-3xl" />
 
           <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 rounded-lg border border-purple-500/40 bg-purple-500/10 px-4 py-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-accent/40 bg-accent/10 px-4 py-1.5">
               <span className="text-lg">🎭</span>
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-purple-300">
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-accent">
                 Character Vessel
               </span>
             </div>
@@ -197,7 +197,7 @@ export default function CharacterOverview() {
 
           <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl">
             <span className="text-foreground">Forge and Refine </span>
-            <span className="text-purple-400">Your Avatar</span>
+            <span className="text-accent">Your Avatar</span>
           </h1>
 
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
@@ -223,7 +223,7 @@ export default function CharacterOverview() {
         <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           {/* Forge Panel */}
           <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-b from-card/80 to-card/40 p-6 shadow-xl">
-            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-purple-500/10 blur-2xl" />
+            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
 
             <div className="relative">
               <div className="flex items-start justify-between gap-4">
@@ -284,20 +284,20 @@ export default function CharacterOverview() {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="mt-6 w-full rounded-lg bg-linear-to-r from-purple-600 to-purple-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:shadow-purple-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-6 w-full rounded-lg bg-linear-to-r from-accent to-accent/80 px-5 py-3 text-sm font-semibold text-accent-foreground shadow-lg shadow-accent/20 transition hover:shadow-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving
                   ? "⏳ Channeling essence..."
                   : vessel
                     ? "🔮 Save Vessel Changes"
-                    : "✨ Forge Avatar"}
+                    : "🛡️ Forge Avatar"}
               </button>
             </div>
           </div>
 
           {/* Preview Panel */}
           <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-b from-card/80 to-card/40 p-6 shadow-xl">
-            <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-amber-500/10 blur-2xl" />
+            <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-chart-1/10 blur-2xl" />
 
             <div className="relative">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -385,8 +385,8 @@ export default function CharacterOverview() {
               </div>
 
               {/* Relic Slots Preview */}
-              <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                <div className="flex items-center gap-2 text-xs text-amber-300">
+              <div className="mt-6 rounded-xl border border-chart-1/20 bg-chart-1/5 p-4">
+                <div className="flex items-center gap-2 text-xs text-chart-1">
                   <span>💎</span>
                   <span>Relic Slots Available</span>
                 </div>

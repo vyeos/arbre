@@ -8,14 +8,14 @@ export default function PlayPage() {
         {/* Header with RPG flair */}
         <header className="relative space-y-4">
           {/* Decorative glow */}
-          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -top-10 left-0 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
 
           <div className="relative flex flex-wrap items-center gap-4">
             <Badge
               variant="outline"
-              className="border-emerald-500/40 px-4 py-1.5 text-xs uppercase tracking-[0.3em] text-emerald-300"
+              className="border-primary/40 px-4 py-1.5 text-xs uppercase tracking-[0.3em] text-primary"
             >
-              <span className="mr-2 h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span className="mr-2 h-2 w-2 animate-pulse rounded-full bg-primary" />
               Quest Arena
             </Badge>
             <span className="text-xs text-muted-foreground">⚔️ Live Encounter Zone</span>
@@ -23,7 +23,7 @@ export default function PlayPage() {
 
           <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl">
             <span className="text-foreground">Enter the </span>
-            <span className="text-emerald-400">Live Quest Arena</span>
+            <span className="text-primary">Live Quest Arena</span>
           </h1>
 
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">

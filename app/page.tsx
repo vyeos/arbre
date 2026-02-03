@@ -11,21 +11,21 @@ const highlights = [
     title: "Quest Encounters",
     description:
       "Face live code encounters that test your skill. Earn XP, Gold, and Skill Points with every Critical Hit.",
-    glow: "shadow-emerald-500/20",
+    glow: "shadow-primary/20",
   },
   {
     icon: "🌳",
     title: "Skill Branches",
     description:
       "Bind Skills to shape your build. Unlock passive buffs, active abilities, and bend the rules of combat.",
-    glow: "shadow-sky-500/20",
+    glow: "shadow-chart-2/20",
   },
   {
     icon: "🛡️",
     title: "Relic Armory",
     description:
       "Acquire legendary Relics and bind them to your Avatar. Let your victories shine for all to see.",
-    glow: "shadow-amber-500/20",
+    glow: "shadow-chart-1/20",
   },
 ];
 
@@ -56,24 +56,24 @@ const journeyChapters = [
     title: "Enter the Quest Arena",
     description: "Face live encounters. Drain the bug. Claim your rewards.",
     href: "/play",
-    color: "border-emerald-500/40 hover:border-emerald-400/60",
-    glow: "hover:shadow-emerald-500/10",
+    color: "border-primary/40 hover:border-primary/60",
+    glow: "hover:shadow-primary/10",
   },
   {
     chapter: "II",
     title: "Bind Skills",
     description: "Spend Bytes in the Skill Tree to shape your build.",
     href: "/skills",
-    color: "border-sky-500/40 hover:border-sky-400/60",
-    glow: "hover:shadow-sky-500/10",
+    color: "border-chart-2/40 hover:border-chart-2/60",
+    glow: "hover:shadow-chart-2/10",
   },
   {
     chapter: "III",
     title: "Claim Relics",
     description: "Visit the Armory. Acquire cosmetics. Show your victories.",
     href: "/armory",
-    color: "border-amber-500/40 hover:border-amber-400/60",
-    glow: "hover:shadow-amber-500/10",
+    color: "border-chart-1/40 hover:border-chart-1/60",
+    glow: "hover:shadow-chart-1/10",
   },
 ];
 
@@ -125,7 +125,7 @@ export default function Page() {
                 <Button
                   asChild
                   size="lg"
-                  className="group relative overflow-hidden bg-linear-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40"
+                  className="group relative overflow-hidden bg-linear-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40"
                 >
                   <Link href="/play">
                     <span className="relative z-10 flex items-center gap-2">
@@ -133,11 +133,11 @@ export default function Page() {
                     </span>
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="border-primary/40">
-                  <Link href="/signup">🛡️ Forge Avatar</Link>
-                </Button>
+                {/* <Button asChild size="lg" variant="outline" className="border-primary/40">
+                  <Link href="/character">🛡️ Forge Avatar</Link>
+                </Button> */}
                 <Button asChild size="lg" variant="ghost" className="text-muted-foreground">
-                  <Link href="/login">Enter the Gate →</Link>
+                  <Link href="/character">🛡️ Forge Avatar →</Link>
                 </Button>
               </div>
 
@@ -160,10 +160,10 @@ export default function Page() {
 
             {/* Avatar Preview Card */}
             <Card className="relative overflow-hidden border-border/60 bg-linear-to-b from-card/90 to-card/60 shadow-2xl">
-              <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-amber-500/5" />
+              <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-chart-1/5" />
               <CardHeader className="relative">
                 <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="border-amber-500/40 text-amber-300">
+                  <Badge variant="outline" className="border-chart-1/40 text-chart-1">
                     ✨ Character Vessel
                   </Badge>
                   <span className="text-xs text-muted-foreground">Prestige System</span>
@@ -225,7 +225,7 @@ export default function Page() {
         {/* Chronicle / Journey */}
         <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-linear-to-br from-card/80 via-card/60 to-card/40 p-8 shadow-2xl md:p-12">
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-amber-500/5 blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-chart-1/5 blur-3xl" />
 
           <div className="relative grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:items-center">
             <div className="space-y-6">
@@ -240,7 +240,7 @@ export default function Page() {
               <div className="flex flex-wrap gap-3">
                 <Button
                   asChild
-                  className="bg-linear-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                  className="bg-linear-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20"
                 >
                   <Link href="/play">⚔️ Begin Chapter I</Link>
                 </Button>
@@ -280,7 +280,7 @@ export default function Page() {
         <section className="grid gap-8 lg:grid-cols-2">
           <Card className="border-border/60 bg-linear-to-b from-card/80 to-card/40 shadow-xl">
             <CardHeader>
-              <Badge variant="outline" className="w-fit border-emerald-500/40 text-emerald-300">
+              <Badge variant="outline" className="w-fit border-primary/40 text-primary">
                 ⚡ Quest Flow
               </Badge>
               <CardTitle className="mt-4 font-serif text-2xl">
@@ -292,15 +292,15 @@ export default function Page() {
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-emerald-400">●</span>
+                <span className="mt-0.5 text-primary">●</span>
                 <p>Each Quest is either ACTIVE, COMPLETED, LOCKED, or SKIPPED.</p>
               </div>
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-sky-400">●</span>
+                <span className="mt-0.5 text-chart-2">●</span>
                 <p>Complete a Quest to unlock the next. Skipped Quests return later.</p>
               </div>
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-amber-400">●</span>
+                <span className="mt-0.5 text-chart-1">●</span>
                 <p>Rewards trigger instantly. No replay farming, ever.</p>
               </div>
             </CardContent>
@@ -308,7 +308,7 @@ export default function Page() {
 
           <Card className="border-border/60 bg-linear-to-b from-card/80 to-card/40 shadow-xl">
             <CardHeader>
-              <Badge variant="outline" className="w-fit border-amber-500/40 text-amber-300">
+              <Badge variant="outline" className="w-fit border-chart-1/40 text-chart-1">
                 💎 Relic Slots
               </Badge>
               <CardTitle className="mt-4 font-serif text-2xl">Armory-Ready Prestige</CardTitle>
@@ -333,7 +333,7 @@ export default function Page() {
         </section>
 
         {/* Final CTA */}
-        <section className="relative overflow-hidden rounded-2xl border border-primary/30 bg-linear-to-r from-primary/10 via-card/60 to-amber-500/10 p-8 text-center shadow-2xl md:p-12">
+        <section className="relative overflow-hidden rounded-2xl border border-primary/30 bg-linear-to-r from-primary/10 via-card/60 to-chart-1/10 p-8 text-center shadow-2xl md:p-12">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(120,200,120,0.05)_0%,transparent_70%)]" />
           <div className="relative space-y-6">
             <h2 className="font-serif text-3xl font-bold md:text-4xl">
@@ -347,7 +347,7 @@ export default function Page() {
               <Button
                 asChild
                 size="lg"
-                className="bg-linear-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40"
+                className="bg-linear-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40"
               >
                 <Link href="/play">⚔️ Enter Quest Arena</Link>
               </Button>
