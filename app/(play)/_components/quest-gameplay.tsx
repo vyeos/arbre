@@ -109,7 +109,8 @@ export default function QuestGameplay() {
   const [finalCodeByQuest, setFinalCodeByQuest] = useState<Record<string, string>>({});
   const wallet = usePlayerStore((state) => state.wallet);
   const setWallet = usePlayerStore((state) => state.setWallet);
-  const [authRequired, setAuthRequired] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoCompleted, setDemoCompleted] = useState(0);
 
   const [code, setCode] = useState("");
   const [logs, setLogs] = useState<
@@ -130,6 +131,7 @@ export default function QuestGameplay() {
   } | null>(null);
 
   const skipCost = 15;
+  const demoLimit = 5;
 
   const questId = questDetail?.id ?? null;
   const questState = questId ? (questStates[questId] ?? "LOCKED") : "LOCKED";
@@ -164,6 +166,21 @@ export default function QuestGameplay() {
   }, []);
 
   useEffect(() => {
+    const stored = window.localStorage.getItem("demo-quests-cleared");
+    if (stored) {
+      const parsed = Number(stored);
+      if (Number.isFinite(parsed)) {
+        setDemoCompleted(Math.min(demoLimit, Math.max(0, Math.floor(parsed))));
+      }
+    }
+  }, [demoLimit]);
+
+  useEffect(() => {
+    if (!demoMode) return;
+    window.localStorage.setItem("demo-quests-cleared", String(demoCompleted));
+  }, [demoCompleted, demoMode]);
+
+  useEffect(() => {
     if (onboardingSeen) {
       window.localStorage.setItem("quest-onboarding-seen", "true");
     }
@@ -188,6 +205,7 @@ export default function QuestGameplay() {
 
   const walletQuery = useQuery<Wallet>({
     queryKey: ["economy", "wallet"],
+    enabled: !demoMode,
     queryFn: async () => {
       const response = await fetch("/api/elysia/economy/wallet");
       const payload = (await response.json()) as ApiResponse<Wallet>;
@@ -210,7 +228,7 @@ export default function QuestGameplay() {
     queryFn: async () => {
       const response = await fetch("/api/elysia/quests/state");
       if (response.status === 401) {
-        setAuthRequired(true);
+        setDemoMode(true);
         return null;
       }
       const payload = (await response.json()) as ApiResponse<QuestStateResponse>;
@@ -223,7 +241,7 @@ export default function QuestGameplay() {
 
   const skillUnlocksQuery = useQuery<{ unlocks: { id: string; tier: number }[] }>({
     queryKey: ["skills", "unlocks"],
-    enabled: (questListQuery.data?.length ?? 0) > 0,
+    enabled: (questListQuery.data?.length ?? 0) > 0 && !demoMode,
     queryFn: async () => {
       const response = await fetch("/api/elysia/skills/unlocks");
       const payload = (await response.json()) as ApiResponse<{
@@ -243,6 +261,26 @@ export default function QuestGameplay() {
   }, [questListQuery.data]);
 
   useEffect(() => {
+    if (!demoMode || !questListQuery.data?.length) return;
+    const capped = Math.min(demoCompleted, demoLimit);
+    const nextStates: Record<string, QuestState> = {};
+    questListQuery.data.forEach((quest, index) => {
+      if (index < capped) {
+        nextStates[quest.id] = "COMPLETED";
+      } else if (index === capped && capped < demoLimit) {
+        nextStates[quest.id] = "ACTIVE";
+      } else {
+        nextStates[quest.id] = "LOCKED";
+      }
+    });
+    setQuestStates(nextStates);
+    setFinalCodeByQuest({});
+    const activeQuest = questListQuery.data[capped] ?? questListQuery.data[0];
+    setQuestSlug(activeQuest?.slug ?? null);
+  }, [demoCompleted, demoLimit, demoMode, questListQuery.data]);
+
+  useEffect(() => {
+    if (demoMode) return;
     const payload = questStateQuery.data;
     if (!payload || !questListQuery.data?.length) return;
 
@@ -260,7 +298,7 @@ export default function QuestGameplay() {
     const activeQuest =
       questListQuery.data.find((item) => item.id === activeId) ?? questListQuery.data[0];
     setQuestSlug(activeQuest?.slug ?? null);
-  }, [questStateQuery.data, questListQuery.data]);
+  }, [demoMode, questStateQuery.data, questListQuery.data]);
 
   const questDetailQuery = useQuery({
     queryKey: ["challenges", "detail", questSlug],
@@ -291,6 +329,10 @@ export default function QuestGameplay() {
 
   useEffect(() => {
     if (!questList.length) return;
+    if (demoMode) {
+      setSkillGateActive(false);
+      return;
+    }
     const firstQuestId = questList[0]?.id ?? null;
     if (!firstQuestId) return;
     const isFirstCompleted = questStates[firstQuestId] === "COMPLETED";
@@ -300,9 +342,10 @@ export default function QuestGameplay() {
     }
     const count = skillUnlocksQuery.data?.unlocks?.length ?? 0;
     setSkillGateActive(count === 0);
-  }, [questList, questStates, skillUnlocksQuery.data]);
+  }, [demoMode, questList, questStates, skillUnlocksQuery.data]);
 
   const handleSkillGateCheck = async () => {
+    if (demoMode) return;
     await skillUnlocksQuery.refetch();
   };
 
@@ -439,6 +482,13 @@ export default function QuestGameplay() {
       );
 
       if (runStatus === "passed") {
+        if (demoMode) {
+          appendLog("Quest Cleared in Demo. Progress etched into the Codex.", "success");
+          setFinalCodeByQuest((prev) => ({ ...prev, [questId]: code }));
+          setDemoCompleted((prev) => Math.min(demoLimit, prev + 1));
+          setIsRunning(false);
+          return;
+        }
         const completeResponse = await fetch("/api/elysia/quests/complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -473,6 +523,10 @@ export default function QuestGameplay() {
 
   const handleSkip = async () => {
     if (crashed || isRunning || !isPlayable || !questId) return;
+    if (demoMode) {
+      appendLog("Demo mode: skipping is sealed.", "danger");
+      return;
+    }
     if (wallet.bytes < skipCost) {
       appendLog("Not enough Bytes to bend fate.", "danger");
       return;
@@ -514,17 +568,7 @@ export default function QuestGameplay() {
     );
   }
 
-  if (authRequired) {
-    return (
-      <div className="rounded-2xl border border-border bg-card/80 p-6 text-sm text-muted-foreground">
-        The gate is sealed.{" "}
-        <Link href="/login" className="text-primary">
-          Sign in
-        </Link>{" "}
-        to enter the live Quest Arena.
-      </div>
-    );
-  }
+  const demoLimitReached = demoMode && demoCompleted >= demoLimit;
 
   if (!questDetail) {
     return (
@@ -546,6 +590,33 @@ export default function QuestGameplay() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
       <section className="relative rounded-2xl border border-border bg-card/80 p-6 shadow-xl">
+        {demoMode ? (
+          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-xs text-primary">
+            Demo Mode: Clear up to {demoLimit} Quests before the Gate seals.
+          </div>
+        ) : null}
+        {demoLimitReached ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-6">
+            <div className="max-w-md rounded-2xl border border-border bg-background/95 p-6 text-sm text-foreground shadow-xl">
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                Demo Limit Reached
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">The Gate Seals Here</h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                You cleared {demoLimit} Quests. Sign in to continue your ascent and unlock the full
+                Quest chain.
+              </p>
+              <div className="mt-4 flex justify-end">
+                <Link
+                  href="/login"
+                  className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                >
+                  Enter the Gate
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {dialogActive ? (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-6">
             <div className="max-w-md rounded-2xl border border-border bg-background/95 p-6 text-sm text-foreground shadow-xl">
@@ -760,7 +831,7 @@ export default function QuestGameplay() {
               minimap: { enabled: false },
               fontSize: 14,
               scrollBeyondLastLine: false,
-              // readOnly: crashed || isReadOnly || skillGateActive,
+              readOnly: crashed || isReadOnly || skillGateActive,
             }}
           />
         </div>
