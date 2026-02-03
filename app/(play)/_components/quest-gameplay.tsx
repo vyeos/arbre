@@ -550,21 +550,33 @@ export default function QuestGameplay() {
                 <span className="text-xs text-muted-foreground">
                   Step {onboardingStep + 1} / {onboardingSteps.length}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextStep = onboardingStep + 1;
-                    if (nextStep >= onboardingSteps.length) {
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
                       setOnboardingSeen(true);
                       setOnboardingStep(0);
-                    } else {
-                      setOnboardingStep(nextStep);
-                    }
-                  }}
-                  className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
-                >
-                  {onboardingStep + 1 >= onboardingSteps.length ? "Enter the Quest" : "Next"}
-                </button>
+                    }}
+                    className="rounded-md border border-border bg-background/70 px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                  >
+                    Skip Briefing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextStep = onboardingStep + 1;
+                      if (nextStep >= onboardingSteps.length) {
+                        setOnboardingSeen(true);
+                        setOnboardingStep(0);
+                      } else {
+                        setOnboardingStep(nextStep);
+                      }
+                    }}
+                    className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  >
+                    {onboardingStep + 1 >= onboardingSteps.length ? "Enter the Quest" : "Next"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -736,7 +748,7 @@ export default function QuestGameplay() {
               minimap: { enabled: false },
               fontSize: 14,
               scrollBeyondLastLine: false,
-              readOnly: crashed || isReadOnly || dialogActive || skillGateActive,
+              readOnly: crashed || isReadOnly || skillGateActive,
             }}
           />
         </div>

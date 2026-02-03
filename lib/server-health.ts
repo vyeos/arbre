@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type HealthStatus = "stable" | "warning" | "critical" | "crashed";
 
@@ -88,20 +88,26 @@ export const useServerHealth = (config: HealthEngineConfig) => {
     }
   }, [drainPerTick, health, maxHealth, config]);
 
-  const applyDamage = (amount: number) => {
+  const applyDamage = useCallback((amount: number) => {
     const damage = Math.abs(amount);
     setHealth((current) => Math.max(0, current - damage));
-  };
+  }, []);
 
-  const restoreHealth = (amount: number) => {
-    const healing = Math.abs(amount);
-    setHealth((current) => Math.min(maxHealth, current + healing));
-  };
+  const restoreHealth = useCallback(
+    (amount: number) => {
+      const healing = Math.abs(amount);
+      setHealth((current) => Math.min(maxHealth, current + healing));
+    },
+    [maxHealth],
+  );
 
-  const resetHealth = (value?: number) => {
-    crashNotified.current = false;
-    setHealth(value ?? maxHealth);
-  };
+  const resetHealth = useCallback(
+    (value?: number) => {
+      crashNotified.current = false;
+      setHealth(value ?? maxHealth);
+    },
+    [maxHealth],
+  );
 
   return {
     health,
