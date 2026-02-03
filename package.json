@@ -15,7 +15,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "bun run scripts/seed.ts"
+    "db:seed": "bun run scripts/seed.ts",
+    "e2b:build:dev": "cd code-sandbox && npx tsx build.dev.ts",
+    "e2b:build:prod": "cd code-sandbox && npx tsx build.prod.ts"
   },
   "dependencies": {
     "@e2b/code-interpreter": "^2.3.3",

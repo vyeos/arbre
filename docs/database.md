@@ -3,7 +3,7 @@
 ## Local Development
 
 - Start Postgres: `docker-compose up -d`
-- Set `DATABASE_URL` in `.env.local`
+- Set `DATABASE_URL` in `.env`
 
 ## Migrations
 
